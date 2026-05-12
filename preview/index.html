@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gestión de Préstamos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #1e293b; }
+
+  /* ── Layout ── */
+  .app { display: flex; height: 100dvh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 240px; background: #0f172a; color: #cbd5e1;
+    display: flex; flex-direction: column; flex-shrink: 0;
+    transition: transform 0.25s ease;
+    z-index: 50;
+  }
+  .sidebar-logo { padding: 20px 16px; border-bottom: 1px solid #1e293b; }
+  .sidebar-logo span { font-size: 14px; font-weight: 700; color: #f8fafc; }
+  .sidebar-logo small { display: block; font-size: 11px; color: #64748b; margin-top: 2px; }
+  .sidebar-section { padding: 16px 12px 4px; font-size: 10px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; margin: 1px 6px; font-size: 13px; cursor: pointer; transition: all 0.15s; color: #94a3b8; }
+  .sidebar-item:hover { background: #1e293b; color: #f1f5f9; }
+  .sidebar-item.active { background: #1d4ed8; color: #fff; }
+  .sidebar-item .icon { width: 16px; text-align: center; font-size: 14px; }
+  .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid #1e293b; }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .user-info .name { font-size: 12px; color: #f1f5f9; font-weight: 500; }
+  .user-info .role { font-size: 10px; color: #64748b; }
+
+  /* ── Overlay (mobile) ── */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,23,42,0.5); z-index: 40;
+  }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 0 16px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-shrink: 0;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; color: #475569; font-size: 20px; line-height: 1; }
+  .topbar-title { font-size: 15px; font-weight: 600; color: #0f172a; white-space: nowrap; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .search-bar { position: relative; }
+  .search-bar input { padding: 7px 12px 7px 32px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; width: 200px; outline: none; }
+  .search-bar input:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px #dbeafe; }
+  .search-bar::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; }
+
+  /* ── Content ── */
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: #1d4ed8; color: #fff; }
+  .btn-primary:hover { background: #1e40af; }
+  .btn-outline { background: transparent; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-outline:hover { background: #f8fafc; }
+  .btn-danger { background: #fee2e2; color: #dc2626; border: none; }
+  .btn-success { background: #dcfce7; color: #16a34a; border: none; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  /* ── Stats grid ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stats-grid.cols3 { grid-template-columns: repeat(3, 1fr); }
+  .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; }
+  .stat-label { font-size: 12px; color: #64748b; font-weight: 500; }
+  .stat-value { font-size: 24px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .stat-card.blue .stat-value { color: #1d4ed8; }
+  .stat-card.green .stat-value { color: #16a34a; }
+  .stat-card.amber .stat-value { color: #d97706; }
+
+  /* ── Card / Table ── */
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+  .card-header { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+  .card-subtitle { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+
+  /* Table wrapper para scroll horizontal */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; min-width: 500px; }
+  thead th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+  tbody td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid #f8fafc; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #f8fafc; }
+
+  /* ── Badges ── */
+  .badge { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; display: inline-block; white-space: nowrap; }
+  .badge-green  { background: #dcfce7; color: #16a34a; }
+  .badge-red    { background: #fee2e2; color: #dc2626; }
+  .badge-amber  { background: #fef3c7; color: #d97706; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-gray   { background: #f1f5f9; color: #64748b; }
+  .badge-purple { background: #f3e8ff; color: #7c3aed; }
+
+  /* ── Pages ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 100; align-items: flex-end; justify-content: center; }
+  @media (min-width: 640px) { .modal-overlay { align-items: center; } }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; width: 100%; max-height: 90dvh; overflow-y: auto;
+    border-radius: 16px 16px 0 0; padding: 20px;
+  }
+  @media (min-width: 640px) {
+    .modal { border-radius: 12px; max-width: 540px; }
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-title { font-size: 16px; font-weight: 600; }
+  .modal-close { cursor: pointer; color: #94a3b8; font-size: 18px; border: none; background: none; padding: 4px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+
+  /* ── Form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: #475569; }
+  input, select, textarea { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; color: #0f172a; outline: none; background: #fff; width: 100%; -webkit-appearance: none; }
+  input:focus, select:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px #dbeafe; }
+
+  /* ── Upload ── */
+  .upload-area { border: 2px dashed #e2e8f0; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .upload-area:hover, .upload-area:active { border-color: #1d4ed8; background: #eff6ff; }
+  .upload-area .upload-icon { font-size: 28px; margin-bottom: 6px; }
+  .upload-area p { font-size: 13px; color: #64748b; }
+  .upload-area small { font-size: 11px; color: #94a3b8; }
+
+  /* ── Login ── */
+  .login-page { display: none; position: fixed; inset: 0; background: #0f172a; z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .login-page.open { display: flex; }
+  .login-card { background: #fff; border-radius: 16px; padding: 36px 28px; width: 100%; max-width: 380px; text-align: center; }
+  .login-logo { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+  .btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; font-weight: 500; color: #1e293b; transition: all 0.15s; }
+  .btn-google:hover, .btn-google:active { background: #f8fafc; }
+
+  /* ── Action row (mobile stacking) ── */
+  .action-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; overflow-x: auto; }
+  .tab { padding: 9px 14px; font-size: 13px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: all 0.15s; }
+  .tab.active { color: #1d4ed8; border-bottom-color: #1d4ed8; }
+
+  /* ════════════════════════════
+     RESPONSIVE BREAKPOINTS
+  ════════════════════════════ */
+
+  /* Tablet: ≤ 900px */
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid.cols3 { grid-template-columns: repeat(2, 1fr); }
+    .search-bar input { width: 160px; }
+  }
+
+  /* Mobile: ≤ 640px */
+  @media (max-width: 640px) {
+    /* Sidebar se convierte en drawer */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0;
+      transform: translateX(-100%);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.open { display: block; }
+
+    .hamburger { display: block; }
+    .search-bar { display: none; } /* search en topbar se oculta, se puede abrir */
+
+    .content { padding: 12px; }
+
+    /* Stats en 2 cols en móvil */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stats-grid.cols3 { grid-template-columns: repeat(2, 1fr); }
+    .stat-value { font-size: 20px; }
+
+    /* Card header apila vertical */
+    .card-header { flex-direction: column; align-items: flex-start; }
+
+    /* Form de una columna */
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+
+    /* Modal full bottom sheet */
+    .modal { padding: 16px; }
+
+    /* Tabla: botones de acción apilados */
+    .action-row { flex-direction: column; }
+    .action-row .btn { width: 100%; }
+
+    /* Topbar */
+    .topbar { padding: 0 12px; }
+    .topbar-title { font-size: 14px; }
+
+    /* Tabs scroll */
+    .tabs { gap: 0; }
+    .card-header .tabs { border: none; margin: 0; }
+  }
+
+  /* Muy pequeño: ≤ 380px */
+  @media (max-width: 380px) {
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div class="login-page open" id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">💰 GestiónPréstamos</div>
+    <div class="login-sub">Plataforma de gestión de préstamos y cobranzas</div>
+    <button class="btn-google" onclick="doLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Continuar con Google
+    </button>
+    <p style="font-size:11px;color:#94a3b8;margin-top:18px;">Tu acceso quedará pendiente de aprobación por un administrador.</p>
+  </div>
+</div>
+
+<!-- ══ PENDING ══ -->
+<div class="login-page" id="pendingPage">
+  <div class="login-card">
+    <div style="font-size:44px;margin-bottom:14px;">⏳</div>
+    <div class="login-logo" style="font-size:17px;">Solicitud en revisión</div>
+    <p style="font-size:13px;color:#64748b;margin-top:8px;margin-bottom:22px;">Tu cuenta está pendiente de aprobación. Un administrador revisará tu solicitud pronto.</p>
+    <button class="btn btn-outline" style="width:100%;" onclick="showApp()">← Ver como Admin (demo)</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="app" id="appShell" style="display:none">
+
+  <!-- Overlay para cerrar sidebar en móvil -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span>💰 GestiónPréstamos</span>
+      <small>Panel de administración</small>
+    </div>
+
+    <div class="sidebar-section">Administración</div>
+    <div class="sidebar-item active" onclick="navigate('usuarios', this)">
+      <span class="icon">👥</span> Usuarios
+    </div>
+    <div class="sidebar-item" onclick="navigate('entidades', this)">
+      <span class="icon">🏢</span> Entidades
+    </div>
+
+    <div class="sidebar-section">Préstamos</div>
+    <div class="sidebar-item" onclick="navigate('clientes', this)">
+      <span class="icon">👤</span> Clientes
+    </div>
+    <div class="sidebar-item" onclick="navigate('prestamos', this)">
+      <span class="icon">📋</span> Préstamos
+    </div>
+    <div class="sidebar-item" style="opacity:0.4;cursor:not-allowed;">
+      <span class="icon">💳</span> Pagos
+      <span class="badge badge-gray" style="margin-left:auto;font-size:9px;">Pronto</span>
+    </div>
+    <div class="sidebar-item" style="opacity:0.4;cursor:not-allowed;">
+      <span class="icon">📄</span> Certificaciones
+      <span class="badge badge-gray" style="margin-left:auto;font-size:9px;">Pronto</span>
+    </div>
+
+    <div class="sidebar-section">Inversiones</div>
+    <div class="sidebar-item" style="opacity:0.4;cursor:not-allowed;">
+      <span class="icon">💼</span> Inversionistas
+      <span class="badge badge-gray" style="margin-left:auto;font-size:9px;">Pronto</span>
+    </div>
+    <div class="sidebar-item" style="opacity:0.4;cursor:not-allowed;">
+      <span class="icon">📈</span> Inversiones
+      <span class="badge badge-gray" style="margin-left:auto;font-size:9px;">Pronto</span>
+    </div>
+    <div class="sidebar-item" style="opacity:0.4;cursor:not-allowed;">
+      <span class="icon">🏦</span> Liquidaciones
+      <span class="badge badge-gray" style="margin-left:auto;font-size:9px;">Pronto</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">JR</div>
+        <div class="user-info">
+          <div class="name">Juan Rubio</div>
+          <div class="role">ADMIN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-title" id="pageTitle">Usuarios</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-bar">
+          <input type="text" placeholder="Buscar..." />
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── USUARIOS ── -->
+      <div class="page active" id="page-usuarios">
+        <div class="stats-grid cols3">
+          <div class="stat-card">
+            <div class="stat-label">Total usuarios</div>
+            <div class="stat-value">5</div>
+            <div class="stat-sub">Registrados</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">Pendientes</div>
+            <div class="stat-value">2</div>
+            <div class="stat-sub">Por aprobar</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">Activos</div>
+            <div class="stat-value">3</div>
+            <div class="stat-sub">Con acceso</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Gestión de usuarios</div>
+              <div class="card-subtitle">Aprueba solicitudes y administra roles</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="font-size:10px;">JR</div><span style="font-weight:500;">Juan Rubio</span></div></td>
+                  <td style="color:#64748b;">juan@email.com</td>
+                  <td><span class="badge badge-purple">ADMIN</span></td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td style="color:#64748b;white-space:nowrap;">15 ene 2025</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="font-size:10px;background:#0891b2;">ML</div><span style="font-weight:500;">María López</span></div></td>
+                  <td style="color:#64748b;">maria@email.com</td>
+                  <td><span class="badge badge-blue">PRESTAMISTA</span></td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td style="color:#64748b;white-space:nowrap;">20 ene 2025</td>
+                  <td><button class="btn btn-outline btn-sm">Revocar</button></td>
+                </tr>
+                <tr>
+                  <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="font-size:10px;background:#7c3aed;">CP</div><span style="font-weight:500;">Carlos Pérez</span></div></td>
+                  <td style="color:#64748b;">carlos@email.com</td>
+                  <td><span class="badge badge-blue">PRESTAMISTA</span></td>
+                  <td><span class="badge badge-green">Activo</span></td>
+                  <td style="color:#64748b;white-space:nowrap;">5 feb 2025</td>
+                  <td><button class="btn btn-outline btn-sm">Revocar</button></td>
+                </tr>
+                <tr style="background:#fffbeb;">
+                  <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="font-size:10px;background:#d97706;">AG</div><span style="font-weight:500;">Ana García</span></div></td>
+                  <td style="color:#64748b;">ana@email.com</td>
+                  <td><span class="badge badge-gray">Sin rol</span></td>
+                  <td><span class="badge badge-amber">Pendiente</span></td>
+                  <td style="color:#64748b;white-space:nowrap;">hace 2h</td>
+                  <td>
+                    <div class="action-row">
+                      <button class="btn btn-success btn-sm">✓ Aprobar</button>
+                      <button class="btn btn-danger btn-sm">✕ Rechazar</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr style="background:#fffbeb;">
+                  <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="font-size:10px;background:#d97706;">RT</div><span style="font-weight:500;">Roberto Torres</span></div></td>
+                  <td style="color:#64748b;">roberto@email.com</td>
+                  <td><span class="badge badge-gray">Sin rol</span></td>
+                  <td><span class="badge badge-amber">Pendiente</span></td>
+                  <td style="color:#64748b;white-space:nowrap;">hace 1d</td>
+                  <td>
+                    <div class="action-row">
+                      <button class="btn btn-success btn-sm">✓ Aprobar</button>
+                      <button class="btn btn-danger btn-sm">✕ Rechazar</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ENTIDADES ── -->
+      <div class="page" id="page-entidades">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Entidades</div>
+              <div class="card-subtitle">Empresas empleadoras con descuento por nómina</div>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modalEntidad')">+ Nueva entidad</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID / NIT</th>
+                  <th>Nombre</th>
+                  <th>Dirección</th>
+                  <th>Contacto</th>
+                  <th>Teléfono</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;">800123456</td>
+                  <td style="font-weight:500;">Alcaldía Municipal</td>
+                  <td style="color:#64748b;">Cra 5 # 10-20</td>
+                  <td style="color:#64748b;">Pedro Suárez</td>
+                  <td style="color:#64748b;white-space:nowrap;">312 456 7890</td>
+                  <td><button class="btn btn-outline btn-sm">Editar</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;">900234567</td>
+                  <td style="font-weight:500;">Hospital Regional</td>
+                  <td style="color:#64748b;">Av. Salud # 3-45</td>
+                  <td style="color:#64748b;">Luz Martínez</td>
+                  <td style="color:#64748b;white-space:nowrap;">310 987 6543</td>
+                  <td><button class="btn btn-outline btn-sm">Editar</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;">COOP-001</td>
+                  <td style="font-weight:500;">Cooperativa Docentes</td>
+                  <td style="color:#64748b;">—</td>
+                  <td style="color:#64748b;">—</td>
+                  <td style="color:#64748b;">—</td>
+                  <td><button class="btn btn-outline btn-sm">Editar</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CLIENTES ── -->
+      <div class="page" id="page-clientes">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Clientes</div>
+              <div class="card-subtitle">Personas con préstamos activos o historial</div>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modalCliente')">+ Nuevo cliente</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Documento</th>
+                  <th>Nombre</th>
+                  <th>Teléfono</th>
+                  <th>Entidad</th>
+                  <th>Dirección</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;white-space:nowrap;">1.012.345.678</td>
+                  <td style="font-weight:500;white-space:nowrap;">Laura Jiménez</td>
+                  <td style="color:#64748b;white-space:nowrap;">315 234 5678</td>
+                  <td><span class="badge badge-blue">Alcaldía Municipal</span></td>
+                  <td style="color:#64748b;">Cll 8 # 5-12</td>
+                  <td><button class="btn btn-outline btn-sm" style="white-space:nowrap;">Ver préstamos</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;white-space:nowrap;">52.345.678</td>
+                  <td style="font-weight:500;white-space:nowrap;">Andrés Morales</td>
+                  <td style="color:#64748b;white-space:nowrap;">301 876 5432</td>
+                  <td><span class="badge badge-blue">Hospital Regional</span></td>
+                  <td style="color:#64748b;">Cra 12 # 20-5</td>
+                  <td><button class="btn btn-outline btn-sm" style="white-space:nowrap;">Ver préstamos</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;color:#1d4ed8;white-space:nowrap;">80.123.456</td>
+                  <td style="font-weight:500;white-space:nowrap;">Diana Castillo</td>
+                  <td style="color:#64748b;white-space:nowrap;">320 111 2233</td>
+                  <td><span class="badge badge-blue">Cooperativa Docentes</span></td>
+                  <td style="color:#64748b;">Cll 15 # 8-90</td>
+                  <td><button class="btn btn-outline btn-sm" style="white-space:nowrap;">Ver préstamos</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PRÉSTAMOS ── -->
+      <div class="page" id="page-prestamos">
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-label">Capital colocado</div>
+            <div class="stat-value">$24.5M</div>
+            <div class="stat-sub">Préstamos activos</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">Activos</div>
+            <div class="stat-value">38</div>
+            <div class="stat-sub">Este mes</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">Por cobrar</div>
+            <div class="stat-value">$3.2M</div>
+            <div class="stat-sub">Cuotas pendientes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pagados</div>
+            <div class="stat-value">12</div>
+            <div class="stat-sub">Finalizados</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Préstamos</div>
+              <div class="card-subtitle">Todos los préstamos registrados</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <div class="tabs" style="border:none;margin:0;">
+                <div class="tab active" style="padding:6px 10px;font-size:12px;">Todos</div>
+                <div class="tab" style="padding:6px 10px;font-size:12px;">Libranza</div>
+                <div class="tab" style="padding:6px 10px;font-size:12px;">Personal</div>
+              </div>
+              <button class="btn btn-primary" onclick="openModal('modalPrestamo')">+ Nuevo</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Cliente</th>
+                  <th>Tipo</th>
+                  <th>Capital</th>
+                  <th>Cuotas</th>
+                  <th>Vlr. cuota</th>
+                  <th>Tasa</th>
+                  <th>Estado</th>
+                  <th>Soporte</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:monospace;font-weight:600;color:#1d4ed8;white-space:nowrap;">LIB-2024-001</td>
+                  <td style="font-weight:500;white-space:nowrap;">Laura Jiménez</td>
+                  <td><span class="badge badge-blue">LIBRANZA</span></td>
+                  <td style="white-space:nowrap;">$3.000.000</td>
+                  <td style="text-align:center;">12</td>
+                  <td style="white-space:nowrap;">$290.000</td>
+                  <td>2.5%</td>
+                  <td><span class="badge badge-green">ACTIVA</span></td>
+                  <td><span style="color:#16a34a;font-size:12px;white-space:nowrap;">📎 libranza.pdf</span></td>
+                  <td><button class="btn btn-outline btn-sm">Ver</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;font-weight:600;color:#1d4ed8;white-space:nowrap;">PP00001</td>
+                  <td style="font-weight:500;white-space:nowrap;">Andrés Morales</td>
+                  <td><span class="badge badge-purple">PERSONAL</span></td>
+                  <td style="white-space:nowrap;">$1.500.000</td>
+                  <td style="text-align:center;">6</td>
+                  <td style="white-space:nowrap;">$310.000</td>
+                  <td>3%</td>
+                  <td><span class="badge badge-green">ACTIVA</span></td>
+                  <td><span style="color:#16a34a;font-size:12px;white-space:nowrap;">📎 transf.jpg</span></td>
+                  <td><button class="btn btn-outline btn-sm">Ver</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;font-weight:600;color:#1d4ed8;white-space:nowrap;">LIB-2024-002</td>
+                  <td style="font-weight:500;white-space:nowrap;">Diana Castillo</td>
+                  <td><span class="badge badge-blue">LIBRANZA</span></td>
+                  <td style="white-space:nowrap;">$5.000.000</td>
+                  <td style="text-align:center;">24</td>
+                  <td style="white-space:nowrap;">$275.000</td>
+                  <td>2%</td>
+                  <td><span class="badge badge-green">ACTIVA</span></td>
+                  <td><span style="color:#16a34a;font-size:12px;white-space:nowrap;">📎 libranza.pdf</span></td>
+                  <td><button class="btn btn-outline btn-sm">Ver</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:monospace;font-weight:600;color:#1d4ed8;white-space:nowrap;">PP00002</td>
+                  <td style="font-weight:500;white-space:nowrap;">Laura Jiménez</td>
+                  <td><span class="badge badge-purple">PERSONAL</span></td>
+                  <td style="white-space:nowrap;">$800.000</td>
+                  <td style="text-align:center;">4</td>
+                  <td style="white-space:nowrap;">$220.000</td>
+                  <td>3%</td>
+                  <td><span class="badge badge-gray">PAGADA</span></td>
+                  <td><span style="color:#16a34a;font-size:12px;white-space:nowrap;">📎 foto.jpg</span></td>
+                  <td><button class="btn btn-outline btn-sm">Ver</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ══ MODAL: ENTIDAD ══ -->
+<div class="modal-overlay" id="modalEntidad">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nueva entidad</div>
+      <button class="modal-close" onclick="closeModal('modalEntidad')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ID / NIT *</label>
+        <input type="text" placeholder="800123456 o COOP-001" maxlength="20" />
+      </div>
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" placeholder="Nombre de la entidad" />
+      </div>
+      <div class="form-group full">
+        <label>Dirección</label>
+        <input type="text" placeholder="Opcional" />
+      </div>
+      <div class="form-group">
+        <label>Contacto</label>
+        <input type="text" placeholder="Nombre del contacto" />
+      </div>
+      <div class="form-group">
+        <label>Número de contacto</label>
+        <input type="tel" placeholder="300 123 4567" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalEntidad')">Cancelar</button>
+      <button class="btn btn-primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CLIENTE ══ -->
+<div class="modal-overlay" id="modalCliente">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo cliente</div>
+      <button class="modal-close" onclick="closeModal('modalCliente')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Documento de identidad *</label>
+        <input type="text" placeholder="Número de cédula" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label>Nombres *</label>
+        <input type="text" placeholder="Nombres" autocomplete="given-name" />
+      </div>
+      <div class="form-group">
+        <label>Apellidos *</label>
+        <input type="text" placeholder="Apellidos" autocomplete="family-name" />
+      </div>
+      <div class="form-group full">
+        <label>Dirección *</label>
+        <input type="text" placeholder="Dirección de residencia" autocomplete="street-address" />
+      </div>
+      <div class="form-group">
+        <label>Teléfono *</label>
+        <input type="tel" placeholder="300 123 4567" inputmode="tel" />
+      </div>
+      <div class="form-group">
+        <label>Entidad donde labora *</label>
+        <select>
+          <option value="">Seleccionar...</option>
+          <option>Alcaldía Municipal</option>
+          <option>Hospital Regional</option>
+          <option>Cooperativa Docentes</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalCliente')">Cancelar</button>
+      <button class="btn btn-primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: PRÉSTAMO ══ -->
+<div class="modal-overlay" id="modalPrestamo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo préstamo</div>
+      <button class="modal-close" onclick="closeModal('modalPrestamo')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select id="tipoPrestamo" onchange="toggleNumero()">
+          <option value="">Seleccionar...</option>
+          <option value="LIBRANZA">LIBRANZA</option>
+          <option value="PERSONAL">PERSONAL</option>
+        </select>
+      </div>
+      <div class="form-group" id="grupoNumero">
+        <label id="lblNumero">Número de libranza *</label>
+        <input type="text" id="inputNumero" placeholder="Ej: LIB-2025-042" />
+      </div>
+      <div class="form-group full">
+        <label>Cliente *</label>
+        <select>
+          <option value="">Seleccionar cliente...</option>
+          <option>Laura Jiménez — 1.012.345.678</option>
+          <option>Andrés Morales — 52.345.678</option>
+          <option>Diana Castillo — 80.123.456</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha *</label>
+        <input type="date" />
+      </div>
+      <div class="form-group">
+        <label>Fecha de inicio *</label>
+        <input type="date" />
+      </div>
+      <div class="form-group">
+        <label>Capital *</label>
+        <input type="number" placeholder="$ 0" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label>Tasa de interés (%) *</label>
+        <input type="number" placeholder="2.5" step="0.1" inputmode="decimal" />
+      </div>
+      <div class="form-group">
+        <label>Número de cuotas *</label>
+        <input type="number" placeholder="12" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label>Valor de la cuota</label>
+        <input type="text" placeholder="Calculado automáticamente" style="background:#f8fafc;color:#64748b;" readonly />
+      </div>
+      <div class="form-group full">
+        <label>Soporte (foto o PDF) *</label>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📎</div>
+          <p>Toca para adjuntar o tomar foto</p>
+          <small>JPG, PNG o PDF — máx. 10 MB</small>
+          <input type="file" id="fileInput" accept="image/*,application/pdf" capture="environment" style="display:none" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalPrestamo')">Cancelar</button>
+      <button class="btn btn-primary">Guardar préstamo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function doLogin() {
+    document.getElementById('loginPage').classList.remove('open');
+    document.getElementById('pendingPage').classList.add('open');
+  }
+  function showApp() {
+    document.getElementById('pendingPage').classList.remove('open');
+    document.getElementById('appShell').style.display = 'flex';
+  }
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+  function navigate(page, el) {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const titles = { usuarios:'Usuarios', entidades:'Entidades', clientes:'Clientes', prestamos:'Préstamos' };
+    document.getElementById('pageTitle').textContent = titles[page] || page;
+    closeSidebar();
+  }
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function toggleNumero() {
+    const tipo = document.getElementById('tipoPrestamo').value;
+    const input = document.getElementById('inputNumero');
+    const lbl = document.getElementById('lblNumero');
+    if (tipo === 'PERSONAL') {
+      input.value = 'PP##### (auto)';
+      input.readOnly = true;
+      input.style.background = '#f8fafc';
+      input.style.color = '#64748b';
+      lbl.textContent = 'Número (generado)';
+    } else {
+      input.value = '';
+      input.readOnly = false;
+      input.style.background = '#fff';
+      input.style.color = '#0f172a';
+      lbl.textContent = 'Número de libranza *';
+    }
+  }
+  window.addEventListener('click', e => {
+    if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+  });
+</script>
+</body>
+</html>
