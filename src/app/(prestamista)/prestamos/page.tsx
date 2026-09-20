@@ -15,14 +15,15 @@ export default async function PrestamosPage({
 
   const supabase = await createClient()
 
-  const [{ data: prestamos, count }, { data: clientes }] = await Promise.all([
+  const [{ data: prestamos, count }, { data: clientes }, { data: entidades }] = await Promise.all([
     supabase
       .from("prestamos")
       .select(`
-        id, tipo, numero, cliente_id, fecha, fecha_inicio,
+        id, tipo, numero, cliente_id, entidad_id, fecha, fecha_inicio,
         capital, tasa_interes, cuotas, valor_cuota,
         estado, foto_url,
-        cliente:clientes(nombres, apellidos)
+        cliente:clientes(nombres, apellidos),
+        entidad:entidades(nombre)
       `, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to),
@@ -30,6 +31,10 @@ export default async function PrestamosPage({
       .from("clientes")
       .select("id, nombres, apellidos, documento")
       .order("apellidos", { ascending: true }),
+    supabase
+      .from("entidades")
+      .select("id, nombre")
+      .order("nombre", { ascending: true }),
   ])
 
   // Stats globales sin paginar
@@ -43,6 +48,7 @@ export default async function PrestamosPage({
     <PrestamosClient
       prestamos={(prestamos ?? []) as any}
       clientes={clientes ?? []}
+      entidades={entidades ?? []}
       stats={(statsData ?? []) as any}
       page={page}
       totalPages={totalPages}

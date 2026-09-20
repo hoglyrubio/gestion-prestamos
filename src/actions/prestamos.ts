@@ -54,6 +54,7 @@ export async function crearPrestamo(
 
     const tipo = formData.get("tipo") as string
     const cliente_id = formData.get("cliente_id") as string
+    const entidad_id = (formData.get("entidad_id") as string) || null
     const fecha = formData.get("fecha") as string
     const fecha_inicio = formData.get("fecha_inicio") as string
     const capital = parseFloat(formData.get("capital") as string)
@@ -63,6 +64,7 @@ export async function crearPrestamo(
 
     if (!tipo)         return { error: "Selecciona el tipo de préstamo" }
     if (!cliente_id)   return { error: "Debes seleccionar un cliente de la lista" }
+    if (tipo === "LIBRANZA" && !entidad_id) return { error: "La entidad es obligatoria para préstamos LIBRANZA" }
     if (!fecha)        return { error: "La fecha es obligatoria" }
     if (!fecha_inicio) return { error: "La fecha de inicio es obligatoria" }
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
@@ -83,6 +85,7 @@ export async function crearPrestamo(
     const { data: prestamo, error } = await supabase.from("prestamos").insert({
       prestamista_id: userId,
       cliente_id,
+      entidad_id,
       tipo,
       numero,
       fecha,
@@ -123,6 +126,7 @@ export async function actualizarPrestamo(
     const fecha = formData.get("fecha") as string
     const fecha_inicio = formData.get("fecha_inicio") as string
     const estado = formData.get("estado") as string
+    const entidad_id = (formData.get("entidad_id") as string) || null
     const foto_url = (formData.get("foto_url") as string) || null
 
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
@@ -132,7 +136,7 @@ export async function actualizarPrestamo(
     const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
 
     const updateData: Record<string, unknown> = {
-      capital, tasa_interes, cuotas, valor_cuota, fecha, fecha_inicio, estado,
+      capital, tasa_interes, cuotas, valor_cuota, fecha, fecha_inicio, estado, entidad_id,
     }
     if (foto_url) updateData.foto_url = foto_url
 

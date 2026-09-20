@@ -12,11 +12,13 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { cn } from "@/lib/utils"
 
 interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
+interface Entidad { id: string; nombre: string }
 interface Prestamo {
-  id: string; tipo: string; numero: string; cliente_id: string
+  id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
   cuotas: number; valor_cuota: number; estado: string; foto_url: string | null
   cliente: { nombres: string; apellidos: string } | null
+  entidad: { nombre: string } | null
 }
 
 const COP = (n: number) =>
@@ -34,9 +36,9 @@ const TIPO_CLS: Record<string, string> = {
 const FILTROS = ["Todos", "ACTIVA", "PAGADA", "ANULADA"] as const
 
 export function PrestamosClient({
-  prestamos, clientes, stats, page, totalPages,
+  prestamos, clientes, entidades, stats, page, totalPages,
 }: {
-  prestamos: Prestamo[]; clientes: Cliente[]
+  prestamos: Prestamo[]; clientes: Cliente[]; entidades: Entidad[]
   stats: Pick<Prestamo, "estado" | "capital" | "valor_cuota">[]
   page: number; totalPages: number
 }) {
@@ -135,6 +137,7 @@ export function PrestamosClient({
           <Sheet title={detail.numero} onClose={() => setDetail(null)}>
             <Field label="Cliente"     value={detail.cliente ? `${detail.cliente.nombres} ${detail.cliente.apellidos}` : "—"} />
             <Field label="Tipo"        value={detail.tipo} badge badgeCls={TIPO_CLS[detail.tipo]} />
+            {detail.entidad && <Field label="Entidad" value={detail.entidad.nombre} />}
             <Field label="Estado"      value={detail.estado} badge badgeCls={estadoCls} />
             <Field label="Capital"     value={COP(detail.capital)} />
             <Field label="Tasa"        value={`${detail.tasa_interes}% mensual`} />
@@ -163,6 +166,7 @@ export function PrestamosClient({
           <PrestamoForm
             prestamo={formPrestamo === "new" ? undefined : formPrestamo as Prestamo}
             clientes={clientes}
+            entidades={entidades}
             onClose={() => setForm(null)}
           />
         </Modal>

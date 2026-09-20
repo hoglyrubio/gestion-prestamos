@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
 interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
+interface Entidad { id: string; nombre: string }
 interface Prestamo {
-  id: string; tipo: string; numero: string; cliente_id: string
+  id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
   cuotas: number; valor_cuota: number; estado: string; foto_url: string | null
 }
@@ -23,8 +24,8 @@ const COP = (n: number) =>
 
 const initial: PrestamoFormState = {}
 
-export function PrestamoForm({ prestamo, clientes, onClose }: {
-  prestamo?: Prestamo; clientes: Cliente[]; onClose: () => void
+export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
+  prestamo?: Prestamo; clientes: Cliente[]; entidades: Entidad[]; onClose: () => void
 }) {
   const isEdit = !!prestamo
   const [state, formAction, pending] = useActionState(
@@ -100,6 +101,18 @@ export function PrestamoForm({ prestamo, clientes, onClose }: {
           <Label>Cliente <span className="text-destructive">*</span></Label>
           <ClienteCombobox clientes={clientes} defaultValue={prestamo?.cliente_id} disabled={isEdit} />
         </div>
+
+        {tipo === "LIBRANZA" && (
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>Entidad <span className="text-destructive">*</span></Label>
+            <select name="entidad_id" defaultValue={prestamo?.entidad_id ?? ""} className={selectCls}>
+              <option value="">Seleccionar entidad…</option>
+              {entidades.map((e) => (
+                <option key={e.id} value={e.id}>{e.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label>Fecha <span className="text-destructive">*</span></Label>
