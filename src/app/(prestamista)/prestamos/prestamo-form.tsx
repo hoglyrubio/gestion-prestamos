@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button"
 
 interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
 interface Entidad { id: string; nombre: string }
+interface Adjunto { url: string; nombre: string }
 interface Prestamo {
   id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
-  cuotas: number; valor_cuota: number; estado: string; foto_url: string | null
+  cuotas: number; valor_cuota: number; estado: string
+  adjuntos?: Adjunto[]
 }
 
 const selectCls = "h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -37,11 +39,8 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
   const [capital, setCapital] = useState(prestamo?.capital?.toString() ?? "")
   const [tasa, setTasa]     = useState(prestamo?.tasa_interes?.toString() ?? "4")
   const [cuotas, setCuotas] = useState(prestamo?.cuotas?.toString() ?? "")
-  const [uploading, setUploading] = useState(false)
-  const [fotoUrl, setFotoUrl]     = useState(prestamo?.foto_url ?? "")
-  const [fileName, setFileName]   = useState<string | null>(
-    prestamo?.foto_url ? prestamo.foto_url.split("/").pop() ?? null : null
-  )
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>(prestamo?.adjuntos ?? [])
+  const [uploading, setUploading]   = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => { if (state.success) onClose() }, [state.success, onClose])
@@ -52,25 +51,28 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
   })()
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return
-    if (file.size > 10 * 1024 * 1024) { setUploadError("El archivo supera los 10 MB"); return }
-    setUploadError(null); setUploading(true)
-    try {
-      const supabase = createClient()
-      const ext = file.name.split(".").pop()
-      const path = `prestamos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from("soportes").upload(path, file, { upsert: false })
-      if (error) throw new Error(error.message)
-      const { data: { publicUrl } } = supabase.storage.from("soportes").getPublicUrl(path)
-      setFotoUrl(publicUrl); setFileName(file.name)
-    } catch (err) { setUploadError((err as Error).message) }
-    finally { setUploading(false) }
+    const files = Array.from(e.target.files ?? []); if (!files.length) return
+    e.target.value = ""
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) { setUploadError(`"${file.name}" supera los 10 MB`); continue }
+      setUploadError(null); setUploading(true)
+      try {
+        const supabase = createClient()
+        const ext = file.name.split(".").pop()
+        const path = `prestamos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error } = await supabase.storage.from("soportes").upload(path, file, { upsert: false })
+        if (error) throw new Error(error.message)
+        const { data: { publicUrl } } = supabase.storage.from("soportes").getPublicUrl(path)
+        setAdjuntos((prev) => [...prev, { url: publicUrl, nombre: file.name }])
+      } catch (err) { setUploadError((err as Error).message) }
+      finally { setUploading(false) }
+    }
   }, [])
 
   return (
     <form action={formAction} className="space-y-4">
       {isEdit && <input type="hidden" name="id" value={prestamo.id} />}
-      <input type="hidden" name="foto_url" value={fotoUrl} />
+      <input type="hidden" name="adjuntos" value={JSON.stringify(adjuntos)} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -164,31 +166,36 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
           </div>
         )}
 
-        <div className="sm:col-span-2 space-y-1.5">
-          <Label>Soporte <span className="text-muted-foreground font-normal">(foto o PDF)</span></Label>
-          {fileName ? (
-            <div className="flex items-center gap-3 px-3 py-2.5 border border-border bg-muted/50 rounded-lg">
-              <span className="text-base">📎</span>
-              <span className="text-sm text-foreground flex-1 truncate">{fileName}</span>
-              <button type="button" onClick={() => { setFotoUrl(""); setFileName(null) }}
-                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">✕</button>
+        <div className="sm:col-span-2 space-y-2">
+          <Label>Adjuntos <span className="text-muted-foreground font-normal">(fotos o PDFs)</span></Label>
+
+          {adjuntos.length > 0 && (
+            <div className="space-y-1.5">
+              {adjuntos.map((a, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2 border border-border bg-muted/50 rounded-lg">
+                  <span className="text-base flex-shrink-0">
+                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(a.url) ? "🖼️" : "📄"}
+                  </span>
+                  <span className="text-sm text-foreground flex-1 truncate">{a.nombre}</span>
+                  <button type="button" onClick={() => setAdjuntos((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-muted-foreground hover:text-destructive text-xs cursor-pointer flex-shrink-0">✕</button>
+                </div>
+              ))}
             </div>
-          ) : (
-            <label className={[
-              "flex flex-col items-center justify-center gap-1.5 px-4 py-5",
-              "border-2 border-dashed border-input rounded-lg cursor-pointer",
-              "hover:border-ring hover:bg-muted/30 transition",
-              uploading ? "opacity-60 pointer-events-none" : "",
-            ].join(" ")}>
-              <span className="text-2xl">{uploading ? "⏳" : "📎"}</span>
-              <span className="text-sm text-muted-foreground">
-                {uploading ? "Subiendo…" : "Toca para adjuntar o tomar foto"}
-              </span>
-              <span className="text-xs text-muted-foreground">JPG, PNG o PDF — máx. 10 MB</span>
-              <input type="file" accept="image/*,application/pdf" capture="environment"
-                className="hidden" onChange={handleFileChange} disabled={uploading} />
-            </label>
           )}
+
+          <label className={[
+            "flex items-center justify-center gap-2 px-4 py-3",
+            "border-2 border-dashed border-input rounded-lg cursor-pointer",
+            "hover:border-ring hover:bg-muted/30 transition text-sm text-muted-foreground",
+            uploading ? "opacity-60 pointer-events-none" : "",
+          ].join(" ")}>
+            <span className="text-base">{uploading ? "⏳" : "➕"}</span>
+            {uploading ? "Subiendo…" : "Agregar adjunto"}
+            <input type="file" accept="image/*,application/pdf" multiple
+              className="hidden" onChange={handleFileChange} disabled={uploading} />
+          </label>
+
           {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
         </div>
       </div>
@@ -199,7 +206,7 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
 
       <div className="flex justify-end gap-2 pt-2 border-t border-border">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button type="submit" disabled={pending || uploading}>
+        <Button type="submit" disabled={pending || uploading} title={uploading ? "Espera a que termine la subida" : undefined}>
           {pending ? "Guardando…" : isEdit ? "Actualizar" : "Guardar préstamo"}
         </Button>
       </div>

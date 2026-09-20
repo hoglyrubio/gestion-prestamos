@@ -13,12 +13,48 @@ import { cn } from "@/lib/utils"
 
 interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
 interface Entidad { id: string; nombre: string }
+interface Adjunto { id: string; url: string; nombre: string }
 interface Prestamo {
   id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
-  cuotas: number; valor_cuota: number; estado: string; foto_url: string | null
+  cuotas: number; valor_cuota: number; estado: string
   cliente: { nombres: string; apellidos: string } | null
   entidad: { nombre: string } | null
+  adjuntos: Adjunto[]
+}
+
+function isImage(url: string) { return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) }
+
+function AdjuntoPreview({ adjunto, onClose }: { adjunto: Adjunto; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/85 z-[60] flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 bg-black/40"
+        onClick={(e) => e.stopPropagation()}>
+        <p className="text-white text-sm truncate flex-1 mr-4">{adjunto.nombre}</p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <a href={adjunto.url} download={adjunto.nombre} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs rounded-lg transition">
+            ⬇ Descargar
+          </a>
+          <button onClick={onClose}
+            className="flex items-center justify-center w-8 h-8 bg-white/15 hover:bg-white/25 text-white rounded-lg transition text-sm">
+            ✕
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4 min-h-0"
+        onClick={(e) => e.stopPropagation()}>
+        {isImage(adjunto.url) ? (
+          <img src={adjunto.url} alt={adjunto.nombre}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+        ) : (
+          <iframe src={adjunto.url} title={adjunto.nombre}
+            className="w-full h-full rounded-lg bg-white" />
+        )}
+      </div>
+    </div>
+  )
 }
 
 const COP = (n: number) =>
@@ -42,8 +78,9 @@ export function PrestamosClient({
   stats: Pick<Prestamo, "estado" | "capital" | "valor_cuota">[]
   page: number; totalPages: number
 }) {
-  const [detail, setDetail]     = useState<Prestamo | null>(null)
-  const [formPrestamo, setForm] = useState<Prestamo | null | "new">(null)
+  const [detail, setDetail]       = useState<Prestamo | null>(null)
+  const [formPrestamo, setForm]   = useState<Prestamo | null | "new">(null)
+  const [preview, setPreview]     = useState<Adjunto | null>(null)
   const [filtro, setFiltro]     = useState("Todos")
   const [search, setSearch]     = useState("")
 
@@ -145,11 +182,22 @@ export function PrestamosClient({
             <Field label="Valor cuota" value={COP(detail.valor_cuota)} />
             <Field label="Fecha"       value={detail.fecha} />
             <Field label="Inicio"      value={detail.fecha_inicio} />
-            {detail.foto_url && (
-              <a href={detail.foto_url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-primary hover:underline">
-                📎 Ver soporte
-              </a>
+            {detail.adjuntos.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Adjuntos ({detail.adjuntos.length})
+                </p>
+                <div className="space-y-1.5">
+                  {detail.adjuntos.map((a) => (
+                    <button key={a.id} type="button" onClick={() => setPreview(a)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 border border-border bg-muted/50 hover:bg-muted rounded-lg transition text-left">
+                      <span className="text-base flex-shrink-0">{isImage(a.url) ? "🖼️" : "📄"}</span>
+                      <span className="text-sm text-foreground flex-1 truncate">{a.nombre}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">↗</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             <Button className="w-full" onClick={() => { setDetail(null); setForm(detail) }}>
               Editar préstamo
@@ -171,6 +219,8 @@ export function PrestamosClient({
           />
         </Modal>
       )}
+
+      {preview && <AdjuntoPreview adjunto={preview} onClose={() => setPreview(null)} />}
     </>
   )
 }

@@ -82,6 +82,9 @@ export async function crearPrestamo(
 
     const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
 
+    const adjuntosJson = (formData.get("adjuntos") as string) || "[]"
+    const adjuntos: { url: string; nombre: string }[] = JSON.parse(adjuntosJson)
+
     const { data: prestamo, error } = await supabase.from("prestamos").insert({
       prestamista_id: userId,
       cliente_id,
@@ -95,12 +98,17 @@ export async function crearPrestamo(
       valor_cuota,
       fecha_inicio,
       estado: "ACTIVA",
-      foto_url,
     }).select("id").single()
 
     if (error) {
       if (error.code === "23505") return { error: "Ya existe un préstamo con ese número" }
       return { error: error.message }
+    }
+
+    if (adjuntos.length > 0) {
+      await supabase.from("prestamo_adjuntos").insert(
+        adjuntos.map((a) => ({ prestamo_id: prestamo.id, url: a.url, nombre: a.nombre }))
+      )
     }
 
     revalidatePath("/prestamos")
@@ -135,17 +143,23 @@ export async function actualizarPrestamo(
 
     const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
 
-    const updateData: Record<string, unknown> = {
-      capital, tasa_interes, cuotas, valor_cuota, fecha, fecha_inicio, estado, entidad_id,
-    }
-    if (foto_url) updateData.foto_url = foto_url
+    const adjuntosJson = (formData.get("adjuntos") as string) || "[]"
+    const adjuntos: { url: string; nombre: string }[] = JSON.parse(adjuntosJson)
 
     const { error } = await supabase
       .from("prestamos")
-      .update(updateData)
+      .update({ capital, tasa_interes, cuotas, valor_cuota, fecha, fecha_inicio, estado, entidad_id })
       .eq("id", id)
 
     if (error) return { error: error.message }
+
+    // Reemplazar adjuntos: borrar los anteriores e insertar los nuevos
+    await supabase.from("prestamo_adjuntos").delete().eq("prestamo_id", id)
+    if (adjuntos.length > 0) {
+      await supabase.from("prestamo_adjuntos").insert(
+        adjuntos.map((a) => ({ prestamo_id: id, url: a.url, nombre: a.nombre }))
+      )
+    }
 
     revalidatePath("/prestamos")
     return { success: true }

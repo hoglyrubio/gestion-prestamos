@@ -20,10 +20,10 @@ export default async function PrestamosPage({
       .from("prestamos")
       .select(`
         id, tipo, numero, cliente_id, entidad_id, fecha, fecha_inicio,
-        capital, tasa_interes, cuotas, valor_cuota,
-        estado, foto_url,
+        capital, tasa_interes, cuotas, valor_cuota, estado,
         cliente:clientes(nombres, apellidos),
-        entidad:entidades(nombre)
+        entidad:entidades(nombre),
+        adjuntos:prestamo_adjuntos(id, url, nombre)
       `, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to),
