@@ -5,6 +5,7 @@ import { crearPrestamo, actualizarPrestamo, type PrestamoFormState } from "@/act
 import { calcularCuota } from "@/lib/calculos"
 import { createClient } from "@/lib/supabase/client"
 import { ClienteCombobox } from "@/components/ui/combobox-cliente"
+import { EntidadCombobox } from "@/components/ui/combobox-entidad"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -105,12 +106,7 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
         {tipo === "LIBRANZA" && (
           <div className="sm:col-span-2 space-y-1.5">
             <Label>Entidad <span className="text-destructive">*</span></Label>
-            <select name="entidad_id" defaultValue={prestamo?.entidad_id ?? ""} className={selectCls}>
-              <option value="">Seleccionar entidad…</option>
-              {entidades.map((e) => (
-                <option key={e.id} value={e.id}>{e.nombre}</option>
-              ))}
-            </select>
+            <EntidadCombobox entidades={entidades} defaultValue={prestamo?.entidad_id ?? undefined} />
           </div>
         )}
 
