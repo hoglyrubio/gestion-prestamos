@@ -100,22 +100,6 @@ export async function crearPrestamo(
       return { error: error.message }
     }
 
-    // Generar cuotas del préstamo
-    const pagos = Array.from({ length: cuotas }, (_, i) => {
-      const d = new Date(fecha_inicio + "T00:00:00")
-      d.setMonth(d.getMonth() + i)
-      return {
-        prestamo_id: prestamo.id,
-        numero_cuota: i + 1,
-        fecha_esperada: d.toISOString().split("T")[0],
-        valor_esperado: valor_cuota,
-        estado: "PENDIENTE",
-      }
-    })
-
-    const { error: pagosError } = await supabase.from("pagos").insert(pagos)
-    if (pagosError) return { error: `Préstamo creado pero falló la generación de cuotas: ${pagosError.message}` }
-
     revalidatePath("/prestamos")
     revalidatePath("/pagos")
     return { success: true }

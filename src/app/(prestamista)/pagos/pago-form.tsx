@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
-interface Pago {
-  id: string; numero_cuota: number; fecha_esperada: string
-  valor_esperado: number; valor_pagado: number | null; notas: string | null
-  prestamo: { numero: string }
-  cliente: { nombres: string; apellidos: string }
+interface Prestamo {
+  id: string
+  numero: string
+  cuotas: number
+  cuotas_pagadas: number
+  valor_cuota: number
+  fecha_inicio: string
+  cliente: { nombres: string; apellidos: string } | null
 }
 
 const COP = (n: number) =>
@@ -18,21 +21,27 @@ const COP = (n: number) =>
 
 const initial: PagoFormState = {}
 
-export function PagoForm({ pago, onClose }: { pago: Pago; onClose: () => void }) {
+export function PagoForm({ prestamo, onClose }: { prestamo: Prestamo; onClose: () => void }) {
   const [state, formAction, pending] = useActionState(registrarPago, initial)
   useEffect(() => { if (state.success) onClose() }, [state.success, onClose])
 
+  const numeroCuota = prestamo.cuotas_pagadas + 1
+  const d = new Date(prestamo.fecha_inicio + "T00:00:00")
+  d.setMonth(d.getMonth() + prestamo.cuotas_pagadas)
+  const fechaEsperada = d.toISOString().split("T")[0]
+
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="id" value={pago.id} />
+      <input type="hidden" name="prestamo_id" value={prestamo.id} />
 
       <div className="bg-muted/50 border border-border rounded-lg px-4 py-3 text-sm space-y-1.5">
         {[
-          ["Préstamo", pago.prestamo.numero],
-          ["Cliente", `${pago.cliente.nombres} ${pago.cliente.apellidos}`],
-          ["Cuota", `#${pago.numero_cuota}`],
-          ["Fecha esperada", pago.fecha_esperada],
-          ["Valor esperado", COP(pago.valor_esperado)],
+          ["Préstamo",       prestamo.numero],
+          ["Cliente",        prestamo.cliente
+            ? `${prestamo.cliente.nombres} ${prestamo.cliente.apellidos}` : "—"],
+          ["Cuota",          `#${numeroCuota} de ${prestamo.cuotas}`],
+          ["Fecha esperada", fechaEsperada],
+          ["Valor esperado", COP(prestamo.valor_cuota)],
         ].map(([k, v]) => (
           <div key={k} className="flex justify-between">
             <span className="text-muted-foreground">{k}</span>
@@ -49,7 +58,7 @@ export function PagoForm({ pago, onClose }: { pago: Pago; onClose: () => void })
       <div className="space-y-1.5">
         <Label>Valor pagado <span className="text-destructive">*</span></Label>
         <Input type="number" name="valor_pagado"
-          defaultValue={pago.valor_pagado ?? pago.valor_esperado}
+          defaultValue={prestamo.valor_cuota}
           min="0" step="1000" inputMode="numeric" />
       </div>
 

@@ -24,7 +24,7 @@ async function getAuthorizedClient() {
 
 export type PagoFormState = { error?: string; success?: boolean }
 
-// ── Registrar pago ────────────────────────────────────────────────────────────
+// ── Registrar pago (crea nueva fila, incrementa cuotas_pagadas) ───────────────
 export async function registrarPago(
   _prev: PagoFormState,
   formData: FormData
@@ -32,29 +32,56 @@ export async function registrarPago(
   try {
     const { supabase } = await getAuthorizedClient()
 
-    const id          = formData.get("id") as string
-    const fecha_pago  = formData.get("fecha_pago") as string
+    const prestamo_id  = formData.get("prestamo_id") as string
+    const fecha_pago   = formData.get("fecha_pago") as string
     const valor_pagado = parseFloat(formData.get("valor_pagado") as string)
-    const notas       = (formData.get("notas") as string) || null
+    const notas        = (formData.get("notas") as string) || null
 
     if (!fecha_pago) return { error: "La fecha de pago es obligatoria" }
     if (isNaN(valor_pagado) || valor_pagado <= 0) return { error: "El valor pagado debe ser mayor a 0" }
 
-    const { error } = await supabase
-      .from("pagos")
-      .update({ fecha_pago, valor_pagado, notas, estado: "PAGADO" })
-      .eq("id", id)
+    const { data: prestamo } = await supabase
+      .from("prestamos")
+      .select("id, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio")
+      .eq("id", prestamo_id)
+      .single()
 
-    if (error) return { error: error.message }
+    if (!prestamo) return { error: "Préstamo no encontrado" }
+    if (prestamo.cuotas_pagadas >= prestamo.cuotas)
+      return { error: "Este préstamo ya tiene todas las cuotas pagadas" }
+
+    const numero_cuota = prestamo.cuotas_pagadas + 1
+    const d = new Date(prestamo.fecha_inicio + "T00:00:00")
+    d.setMonth(d.getMonth() + prestamo.cuotas_pagadas)
+    const fecha_esperada = d.toISOString().split("T")[0]
+
+    const { error: insertError } = await supabase.from("pagos").insert({
+      prestamo_id,
+      numero_cuota,
+      fecha_esperada,
+      valor_esperado: prestamo.valor_cuota,
+      fecha_pago,
+      valor_pagado,
+      notas,
+      estado: "PAGADO",
+    })
+    if (insertError) return { error: insertError.message }
+
+    const nuevas_pagadas = prestamo.cuotas_pagadas + 1
+    const nuevoEstado = nuevas_pagadas >= prestamo.cuotas ? "PAGADA" : "ACTIVA"
+    await supabase.from("prestamos")
+      .update({ cuotas_pagadas: nuevas_pagadas, estado: nuevoEstado })
+      .eq("id", prestamo_id)
 
     revalidatePath("/pagos")
+    revalidatePath("/prestamos")
     return { success: true }
   } catch (e) {
     return { error: (e as Error).message }
   }
 }
 
-// ── Anular pago (volver a PENDIENTE) ─────────────────────────────────────────
+// ── Anular pago (elimina la fila, decrementa cuotas_pagadas) ──────────────────
 export async function anularPago(
   _prev: PagoFormState,
   formData: FormData
@@ -64,14 +91,43 @@ export async function anularPago(
 
     const id = formData.get("id") as string
 
-    const { error } = await supabase
+    const { data: pago } = await supabase
       .from("pagos")
-      .update({ fecha_pago: null, valor_pagado: null, notas: null, estado: "PENDIENTE" })
+      .select("prestamo_id, numero_cuota")
       .eq("id", id)
+      .single()
 
-    if (error) return { error: error.message }
+    if (!pago) return { error: "Pago no encontrado" }
+
+    // Solo se puede anular el último pago registrado
+    const { data: ultimo } = await supabase
+      .from("pagos")
+      .select("id")
+      .eq("prestamo_id", pago.prestamo_id)
+      .order("numero_cuota", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (ultimo?.id !== id)
+      return { error: "Solo se puede anular el último pago registrado (cuota más reciente)" }
+
+    const { data: prestamo } = await supabase
+      .from("prestamos")
+      .select("cuotas_pagadas")
+      .eq("id", pago.prestamo_id)
+      .single()
+
+    await supabase.from("pagos").delete().eq("id", id)
+
+    await supabase.from("prestamos")
+      .update({
+        cuotas_pagadas: Math.max(0, (prestamo?.cuotas_pagadas ?? 1) - 1),
+        estado: "ACTIVA",
+      })
+      .eq("id", pago.prestamo_id)
 
     revalidatePath("/pagos")
+    revalidatePath("/prestamos")
     return { success: true }
   } catch (e) {
     return { error: (e as Error).message }
