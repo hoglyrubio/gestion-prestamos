@@ -20,10 +20,10 @@ const adminNav = [
 const prestamisteNav = [
   { href: "/clientes", icon: "👤", label: "Clientes" },
   { href: "/prestamos", icon: "📋", label: "Préstamos" },
+  { href: "/pagos", icon: "💳", label: "Pagos" },
 ]
 
 const comingSoon = [
-  { icon: "💳", label: "Pagos" },
   { icon: "📄", label: "Certificaciones" },
   { icon: "💼", label: "Inversionistas" },
   { icon: "📈", label: "Inversiones" },

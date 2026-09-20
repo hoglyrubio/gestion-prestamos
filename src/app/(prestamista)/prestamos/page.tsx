@@ -1,10 +1,21 @@
 import { createClient } from "@/lib/supabase/server"
 import { PrestamosClient } from "./prestamos-client"
 
-export default async function PrestamosPage() {
+const PAGE_SIZE = 25
+
+export default async function PrestamosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, Number(pageParam ?? 1))
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
   const supabase = await createClient()
 
-  const [{ data: prestamos }, { data: clientes }] = await Promise.all([
+  const [{ data: prestamos, count }, { data: clientes }] = await Promise.all([
     supabase
       .from("prestamos")
       .select(`
@@ -12,18 +23,29 @@ export default async function PrestamosPage() {
         capital, tasa_interes, cuotas, valor_cuota,
         estado, foto_url,
         cliente:clientes(nombres, apellidos)
-      `)
-      .order("created_at", { ascending: false }),
+      `, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to),
     supabase
       .from("clientes")
       .select("id, nombres, apellidos, documento")
       .order("apellidos", { ascending: true }),
   ])
 
+  // Stats globales sin paginar
+  const { data: statsData } = await supabase
+    .from("prestamos")
+    .select("estado, capital, valor_cuota")
+
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
+
   return (
     <PrestamosClient
       prestamos={(prestamos ?? []) as any}
       clientes={clientes ?? []}
+      stats={(statsData ?? []) as any}
+      page={page}
+      totalPages={totalPages}
     />
   )
 }

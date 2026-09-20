@@ -1,14 +1,10 @@
 -- =============================================================================
--- Gestion de Préstamos — Schema de referencia (READ ONLY)
---
--- Este archivo es solo documentación del estado completo de la BD.
--- La fuente de verdad son los archivos en supabase/migrations/.
--- Para aplicar cambios usa: supabase db push
+-- Migration: schema inicial
+-- Tablas: profiles, entidades, clientes, prestamos + RLS + función is_admin
 -- =============================================================================
 
-
 -- ---------------------------------------------------------------------------
--- 0. Función auxiliar de admin
+-- Función auxiliar
 -- ---------------------------------------------------------------------------
 
 create or replace function is_admin()
@@ -19,19 +15,15 @@ stable
 as $$
   select exists (
     select 1 from profiles
-    where id   = auth.uid()
-      and role = 'ADMIN'
+    where id     = auth.uid()
+      and role   = 'ADMIN'
       and status = 'ACTIVE'
   )
 $$;
 
 
--- =============================================================================
--- TABLAS
--- =============================================================================
-
 -- ---------------------------------------------------------------------------
--- 1. profiles  (extiende auth.users)
+-- profiles
 -- ---------------------------------------------------------------------------
 
 create table if not exists profiles (
@@ -46,34 +38,34 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
--- Políticas RLS — profiles
+drop policy if exists "usuario ve su propio perfil"    on profiles;
+drop policy if exists "usuario actualiza su propio perfil" on profiles;
+drop policy if exists "admin ve todos los perfiles"    on profiles;
+drop policy if exists "insertar perfil propio"         on profiles;
+
 create policy "usuario ve su propio perfil"
-  on profiles for select
-  to authenticated
+  on profiles for select to authenticated
   using (id = auth.uid() or is_admin());
 
 create policy "usuario actualiza su propio perfil"
-  on profiles for update
-  to authenticated
+  on profiles for update to authenticated
   using (id = auth.uid() or is_admin());
 
 create policy "admin ve todos los perfiles"
-  on profiles for select
-  to authenticated
+  on profiles for select to authenticated
   using (is_admin());
 
 create policy "insertar perfil propio"
-  on profiles for insert
-  to authenticated
+  on profiles for insert to authenticated
   with check (id = auth.uid());
 
 
 -- ---------------------------------------------------------------------------
--- 2. entidades
+-- entidades
 -- ---------------------------------------------------------------------------
 
 create table if not exists entidades (
-  id               text primary key,           -- NIT u otro código, máx 20 chars
+  id               text primary key,
   nombre           text not null,
   direccion        text,
   contacto         text,
@@ -84,36 +76,32 @@ create table if not exists entidades (
 
 alter table entidades enable row level security;
 
--- Políticas RLS — entidades
+drop policy if exists "usuarios activos ven entidades" on entidades;
+drop policy if exists "admin inserta entidades"        on entidades;
+drop policy if exists "admin actualiza entidades"      on entidades;
+drop policy if exists "admin elimina entidades"        on entidades;
+
 create policy "usuarios activos ven entidades"
-  on entidades for select
-  to authenticated
+  on entidades for select to authenticated
   using (
-    exists (
-      select 1 from profiles
-      where id = auth.uid()
-        and status = 'ACTIVE'
-    )
+    exists (select 1 from profiles where id = auth.uid() and status = 'ACTIVE')
   );
 
 create policy "admin inserta entidades"
-  on entidades for insert
-  to authenticated
+  on entidades for insert to authenticated
   with check (is_admin());
 
 create policy "admin actualiza entidades"
-  on entidades for update
-  to authenticated
+  on entidades for update to authenticated
   using (is_admin());
 
 create policy "admin elimina entidades"
-  on entidades for delete
-  to authenticated
+  on entidades for delete to authenticated
   using (is_admin());
 
 
 -- ---------------------------------------------------------------------------
--- 3. clientes
+-- clientes
 -- ---------------------------------------------------------------------------
 
 create table if not exists clientes (
@@ -130,39 +118,31 @@ create table if not exists clientes (
 
 alter table clientes enable row level security;
 
--- Políticas RLS — clientes
+drop policy if exists "prestamista ve sus clientes"     on clientes;
+drop policy if exists "prestamista inserta clientes"    on clientes;
+drop policy if exists "prestamista actualiza sus clientes" on clientes;
+
 create policy "prestamista ve sus clientes"
-  on clientes for select
-  to authenticated
-  using (
-    prestamista_id = auth.uid()
-    or is_admin()
-  );
+  on clientes for select to authenticated
+  using (prestamista_id = auth.uid() or is_admin());
 
 create policy "prestamista inserta clientes"
-  on clientes for insert
-  to authenticated
+  on clientes for insert to authenticated
   with check (
     prestamista_id = auth.uid()
     and exists (
       select 1 from profiles
-      where id = auth.uid()
-        and status = 'ACTIVE'
-        and role in ('PRESTAMISTA', 'ADMIN')
+      where id = auth.uid() and status = 'ACTIVE' and role in ('PRESTAMISTA', 'ADMIN')
     )
   );
 
 create policy "prestamista actualiza sus clientes"
-  on clientes for update
-  to authenticated
-  using (
-    prestamista_id = auth.uid()
-    or is_admin()
-  );
+  on clientes for update to authenticated
+  using (prestamista_id = auth.uid() or is_admin());
 
 
 -- ---------------------------------------------------------------------------
--- 4. prestamos
+-- prestamos
 -- ---------------------------------------------------------------------------
 
 create table if not exists prestamos (
@@ -185,125 +165,50 @@ create table if not exists prestamos (
 
 alter table prestamos enable row level security;
 
--- Políticas RLS — prestamos
+drop policy if exists "prestamista ve sus prestamos"      on prestamos;
+drop policy if exists "prestamista inserta prestamos"     on prestamos;
+drop policy if exists "prestamista actualiza sus prestamos" on prestamos;
+
 create policy "prestamista ve sus prestamos"
-  on prestamos for select
-  to authenticated
-  using (
-    prestamista_id = auth.uid()
-    or is_admin()
-  );
+  on prestamos for select to authenticated
+  using (prestamista_id = auth.uid() or is_admin());
 
 create policy "prestamista inserta prestamos"
-  on prestamos for insert
-  to authenticated
+  on prestamos for insert to authenticated
   with check (
     prestamista_id = auth.uid()
     and exists (
       select 1 from profiles
-      where id = auth.uid()
-        and status = 'ACTIVE'
-        and role in ('PRESTAMISTA', 'ADMIN')
+      where id = auth.uid() and status = 'ACTIVE' and role in ('PRESTAMISTA', 'ADMIN')
     )
   );
 
 create policy "prestamista actualiza sus prestamos"
-  on prestamos for update
-  to authenticated
-  using (
-    prestamista_id = auth.uid()
-    or is_admin()
-  );
+  on prestamos for update to authenticated
+  using (prestamista_id = auth.uid() or is_admin());
 
 
 -- ---------------------------------------------------------------------------
--- 5. pagos  (cuotas de cada préstamo)
+-- Storage: bucket soportes
 -- ---------------------------------------------------------------------------
-
-create table if not exists pagos (
-  id              uuid primary key default gen_random_uuid(),
-  prestamo_id     uuid not null references prestamos(id) on delete cascade,
-  numero_cuota    integer not null,
-  fecha_esperada  date not null,
-  valor_esperado  numeric(14,2) not null,
-  fecha_pago      date,
-  valor_pagado    numeric(14,2),
-  estado          text not null default 'PENDIENTE'
-                    check (estado in ('PENDIENTE', 'PAGADO')),
-  notas           text,
-  created_at      timestamptz not null default now(),
-  unique(prestamo_id, numero_cuota)
-);
-
-alter table pagos enable row level security;
-
--- Políticas RLS — pagos
-create policy "prestamista ve sus pagos"
-  on pagos for select
-  to authenticated
-  using (
-    exists (
-      select 1 from prestamos
-      where prestamos.id = pagos.prestamo_id
-        and (prestamos.prestamista_id = auth.uid() or is_admin())
-    )
-  );
-
-create policy "prestamista inserta pagos"
-  on pagos for insert
-  to authenticated
-  with check (
-    exists (
-      select 1 from prestamos
-      where prestamos.id = pagos.prestamo_id
-        and prestamos.prestamista_id = auth.uid()
-    )
-    and exists (
-      select 1 from profiles
-      where id = auth.uid()
-        and status = 'ACTIVE'
-        and role in ('PRESTAMISTA', 'ADMIN')
-    )
-  );
-
-create policy "prestamista actualiza sus pagos"
-  on pagos for update
-  to authenticated
-  using (
-    exists (
-      select 1 from prestamos
-      where prestamos.id = pagos.prestamo_id
-        and (prestamos.prestamista_id = auth.uid() or is_admin())
-    )
-  );
-
-
--- =============================================================================
--- STORAGE — bucket "soportes"
--- =============================================================================
--- Crear el bucket desde el dashboard de Supabase (Storage → New bucket)
--- Nombre: soportes | Public: true (o false si se quiere acceso privado)
---
--- Políticas del bucket (ejecutar aquí):
 
 insert into storage.buckets (id, name, public)
 values ('soportes', 'soportes', true)
 on conflict (id) do nothing;
 
+drop policy if exists "usuarios activos suben soportes" on storage.objects;
+drop policy if exists "soportes son publicos para leer" on storage.objects;
+
 create policy "usuarios activos suben soportes"
-  on storage.objects for insert
-  to authenticated
+  on storage.objects for insert to authenticated
   with check (
     bucket_id = 'soportes'
     and exists (
       select 1 from profiles
-      where id = auth.uid()
-        and status = 'ACTIVE'
-        and role in ('PRESTAMISTA', 'ADMIN')
+      where id = auth.uid() and status = 'ACTIVE' and role in ('PRESTAMISTA', 'ADMIN')
     )
   );
 
 create policy "soportes son publicos para leer"
-  on storage.objects for select
-  to public
+  on storage.objects for select to public
   using (bucket_id = 'soportes');

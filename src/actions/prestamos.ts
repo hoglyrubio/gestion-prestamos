@@ -61,9 +61,10 @@ export async function crearPrestamo(
     const cuotas = parseInt(formData.get("cuotas") as string, 10)
     const foto_url = (formData.get("foto_url") as string) || null
 
-    if (!tipo || !cliente_id || !fecha || !fecha_inicio) {
-      return { error: "Todos los campos obligatorios deben estar completos" }
-    }
+    if (!tipo)         return { error: "Selecciona el tipo de préstamo" }
+    if (!cliente_id)   return { error: "Debes seleccionar un cliente de la lista" }
+    if (!fecha)        return { error: "La fecha es obligatoria" }
+    if (!fecha_inicio) return { error: "La fecha de inicio es obligatoria" }
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
     if (isNaN(tasa_interes) || tasa_interes <= 0) return { error: "La tasa debe ser mayor a 0" }
     if (isNaN(cuotas) || cuotas <= 0) return { error: "Las cuotas deben ser mayor a 0" }
@@ -79,7 +80,7 @@ export async function crearPrestamo(
 
     const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
 
-    const { error } = await supabase.from("prestamos").insert({
+    const { data: prestamo, error } = await supabase.from("prestamos").insert({
       prestamista_id: userId,
       cliente_id,
       tipo,
@@ -92,14 +93,31 @@ export async function crearPrestamo(
       fecha_inicio,
       estado: "ACTIVA",
       foto_url,
-    })
+    }).select("id").single()
 
     if (error) {
       if (error.code === "23505") return { error: "Ya existe un préstamo con ese número" }
       return { error: error.message }
     }
 
+    // Generar cuotas del préstamo
+    const pagos = Array.from({ length: cuotas }, (_, i) => {
+      const d = new Date(fecha_inicio + "T00:00:00")
+      d.setMonth(d.getMonth() + i)
+      return {
+        prestamo_id: prestamo.id,
+        numero_cuota: i + 1,
+        fecha_esperada: d.toISOString().split("T")[0],
+        valor_esperado: valor_cuota,
+        estado: "PENDIENTE",
+      }
+    })
+
+    const { error: pagosError } = await supabase.from("pagos").insert(pagos)
+    if (pagosError) return { error: `Préstamo creado pero falló la generación de cuotas: ${pagosError.message}` }
+
     revalidatePath("/prestamos")
+    revalidatePath("/pagos")
     return { success: true }
   } catch (e) {
     return { error: (e as Error).message }

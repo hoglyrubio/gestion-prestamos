@@ -74,7 +74,26 @@ Descripción: Crear préstamos, ver sus detalles, actualizar información de los
 
 ### Préstamos - Pagos
 
-Pendiente
+Cada préstamo puede tener varios pagos hasta completar el total a pagar, cada vez que un pago es agregado se de totalizar en el préstamo en un campo total pagado.
+
+Los datos de la tabla de pagos son:
+
+- Libranza
+- Fecha
+- Valor
+- Tipo (EFECTIVO, TRANSFERENCIA, BULK)
+- foto (Path o URL donde del archivo de soporte del préstamo como de una libranza, una transferencia, etc)
+-
+
+Los pagos pueden ser ingresados de forma individual, es decir yendo al Préstamo mismo y agregandolo por medio de un biton. En bulk, donde se debe contar con una opción en el menú izquierdo. Se debe guardar esta información del bulk en su propia tabla:
+
+- Entidad
+- Fecha
+- Consignado en:
+- Valor total
+- archivo (path o url de un archivo que se pueda cargar)
+
+Los pagos en este caso se ingresan en la ventana de bulk y se almacenan en la misma tabla de pagos pero con tipo BULK
 
 ### Préstamos - Certificaciones
 
@@ -96,18 +115,19 @@ Pendiente
 
 ### Stack tecnológico
 
-| Capa | Tecnología | Justificación |
-|---|---|---|
+| Capa           | Tecnología                            | Justificación                                                              |
+| -------------- | ------------------------------------- | -------------------------------------------------------------------------- |
 | Frontend / SSR | Next.js 14+ (App Router) + TypeScript | App responsive, SSR cuando conviene, Server Actions para lógica de negocio |
-| UI | Tailwind CSS + shadcn/ui | Componentes accesibles, diseño consistente, sin costo |
-| Auth | Supabase Auth (Google SSO) | OAuth con Google, manejo de sesiones, flujo de aprobación manual |
-| Base de datos | Supabase (PostgreSQL) | Datos relacionales, Row Level Security, capa gratuita suficiente |
-| Almacenamiento | Supabase Storage | Fotos y PDFs de soporte de préstamos |
-| Deployment | Vercel | Integración nativa con Next.js, capa gratuita, CI/CD automático |
+| UI             | Tailwind CSS + shadcn/ui              | Componentes accesibles, diseño consistente, sin costo                      |
+| Auth           | Supabase Auth (Google SSO)            | OAuth con Google, manejo de sesiones, flujo de aprobación manual           |
+| Base de datos  | Supabase (PostgreSQL)                 | Datos relacionales, Row Level Security, capa gratuita suficiente           |
+| Almacenamiento | Supabase Storage                      | Fotos y PDFs de soporte de préstamos                                       |
+| Deployment     | Vercel                                | Integración nativa con Next.js, capa gratuita, CI/CD automático            |
 
 ### Costos estimados
 
 Capa gratuita cubre el 100% de la operación esperada:
+
 - **Supabase Free:** 500 MB base de datos, 1 GB storage, 50.000 usuarios activos/mes
 - **Vercel Free:** 100 GB bandwidth, deploys ilimitados
 
@@ -146,19 +166,20 @@ gestion-prestamos/
 
 ### Roles y acceso
 
-| Módulo | ADMIN | PRESTAMISTA |
-|---|---|---|
-| Gestión de usuarios | ✅ | ❌ |
-| Entidades | ✅ | ❌ |
-| Clientes | ❌ | ✅ (solo los propios) |
-| Préstamos | ❌ | ✅ (solo los propios) |
-| Pagos *(pendiente)* | ❌ | ✅ |
-| Certificaciones *(pendiente)* | ❌ | ✅ |
-| Inversiones *(pendiente)* | ✅ | ❌ |
+| Módulo                        | ADMIN | PRESTAMISTA           |
+| ----------------------------- | ----- | --------------------- |
+| Gestión de usuarios           | ✅    | ❌                    |
+| Entidades                     | ✅    | ❌                    |
+| Clientes                      | ❌    | ✅ (solo los propios) |
+| Préstamos                     | ❌    | ✅ (solo los propios) |
+| Pagos _(pendiente)_           | ❌    | ✅                    |
+| Certificaciones _(pendiente)_ | ❌    | ✅                    |
+| Inversiones _(pendiente)_     | ✅    | ❌                    |
 
 ### Responsive
 
 La aplicación es una WebApp responsive que funciona en desktop, tablet y smartphone:
+
 - **Desktop:** sidebar fija, layout en columnas.
 - **Tablet:** sidebar fija, grids de 2 columnas.
 - **Mobile:** sidebar como drawer lateral (hamburger), modales como bottom sheets, formularios en una columna, teclado numérico en campos de número, acceso directo a cámara en carga de archivos.
