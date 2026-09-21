@@ -22,7 +22,7 @@ export default async function PagosPage({
       .from("prestamos")
       .select(`
         id, numero, tipo, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio, estado,
-        cliente:clientes(nombres, apellidos)
+        cliente:clientes(nombre)
       `, { count: "exact" })
       .eq("estado", "ACTIVA")
       .order("fecha_inicio", { ascending: true })
@@ -33,7 +33,7 @@ export default async function PagosPage({
       .from("pagos")
       .select(`
         id, numero_cuota, fecha_pago, valor_pagado, notas, prestamo_id,
-        prestamo:prestamos(numero, cliente:clientes(nombres, apellidos))
+        prestamo:prestamos(numero, cliente:clientes(nombre))
       `)
       .order("fecha_pago", { ascending: false })
       .limit(50),

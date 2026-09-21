@@ -53,7 +53,7 @@ export type BulkImportState = {
   fallidos?: { fila: number; documento: string; razon: string }[]
 }
 
-const COLUMNAS = ["documento", "nombres", "apellidos", "direccion", "telefono", "entidad_id"] as const
+const COLUMNAS = ["documento", "nombre", "direccion", "telefono", "entidad_id"] as const
 
 export async function importarClientes(
   _prev: BulkImportState,
@@ -77,7 +77,7 @@ export async function importarClientes(
     const idx = Object.fromEntries(COLUMNAS.map((c) => [c, encabezados.indexOf(c)])) as Record<string, number>
 
     const fallidos: { fila: number; documento: string; razon: string }[] = []
-    const filas: { documento: string; nombres: string; apellidos: string; direccion: string; telefono: string; entidad_id: string }[] = []
+    const filas: { documento: string; nombre: string; direccion: string; telefono: string; entidad_id: string }[] = []
 
     for (let i = 1; i < lineas.length; i++) {
       const numFila = i + 1
@@ -85,20 +85,18 @@ export async function importarClientes(
       const get = (c: string) => cols[idx[c]] ?? ""
 
       const documento  = get("documento")
-      const nombres    = get("nombres")
-      const apellidos  = get("apellidos")
+      const nombre     = get("nombre")
       const direccion  = get("direccion")
       const telefono   = get("telefono")
       const entidad_id = get("entidad_id")
 
       if (!documento)  { fallidos.push({ fila: numFila, documento: "(vacío)", razon: "El documento es obligatorio" }); continue }
-      if (!nombres)    { fallidos.push({ fila: numFila, documento, razon: "Los nombres son obligatorios" }); continue }
-      if (!apellidos)  { fallidos.push({ fila: numFila, documento, razon: "Los apellidos son obligatorios" }); continue }
+      if (!nombre)     { fallidos.push({ fila: numFila, documento, razon: "El nombre es obligatorio" }); continue }
       if (!direccion)  { fallidos.push({ fila: numFila, documento, razon: "La dirección es obligatoria" }); continue }
       if (!telefono)   { fallidos.push({ fila: numFila, documento, razon: "El teléfono es obligatorio" }); continue }
       if (!entidad_id) { fallidos.push({ fila: numFila, documento, razon: "El entidad_id es obligatorio" }); continue }
 
-      filas.push({ documento, nombres, apellidos, direccion, telefono, entidad_id })
+      filas.push({ documento, nombre, direccion, telefono, entidad_id })
     }
 
     if (fallidos.length > 0)
@@ -165,21 +163,19 @@ export async function crearCliente(
     const { supabase, userId } = await getAuthorizedClient()
 
     const documento = (formData.get("documento") as string).trim()
-    const nombres = (formData.get("nombres") as string).trim()
-    const apellidos = (formData.get("apellidos") as string).trim()
+    const nombre = (formData.get("nombre") as string).trim()
     const direccion = (formData.get("direccion") as string).trim()
     const telefono = (formData.get("telefono") as string).trim()
     const entidad_id = (formData.get("entidad_id") as string).trim()
 
-    if (!documento || !nombres || !apellidos || !direccion || !telefono || !entidad_id) {
+    if (!documento || !nombre || !direccion || !telefono || !entidad_id) {
       return { error: "Todos los campos son obligatorios" }
     }
 
     const { error } = await supabase.from("clientes").insert({
-      prestamista_id: userId,  // ← asignado automáticamente
+      prestamista_id: userId,
       documento,
-      nombres,
-      apellidos,
+      nombre,
       direccion,
       telefono,
       entidad_id,
@@ -205,20 +201,18 @@ export async function actualizarCliente(
     const { supabase } = await getAuthorizedClient()
 
     const id = formData.get("id") as string
-    const nombres = (formData.get("nombres") as string).trim()
-    const apellidos = (formData.get("apellidos") as string).trim()
+    const nombre = (formData.get("nombre") as string).trim()
     const direccion = (formData.get("direccion") as string).trim()
     const telefono = (formData.get("telefono") as string).trim()
     const entidad_id = (formData.get("entidad_id") as string).trim()
 
-    if (!nombres || !apellidos || !direccion || !telefono || !entidad_id) {
+    if (!nombre || !direccion || !telefono || !entidad_id) {
       return { error: "Todos los campos son obligatorios" }
     }
 
-    // RLS garantiza que solo prestamistas activos pueden actualizar
     const { error } = await supabase
       .from("clientes")
-      .update({ nombres, apellidos, direccion, telefono, entidad_id })
+      .update({ nombre, direccion, telefono, entidad_id })
       .eq("id", id)
 
     if (error) return { error: error.message }

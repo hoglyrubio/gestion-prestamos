@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
-interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
+interface Cliente { id: string; nombre: string; documento: string }
 interface Entidad { id: string; nombre: string }
 interface Adjunto { url: string; nombre: string }
 interface Prestamo {

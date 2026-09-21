@@ -27,8 +27,7 @@ export interface Cliente {
   id: string
   prestamista_id: string
   documento: string
-  nombres: string
-  apellidos: string
+  nombre: string
   direccion: string
   telefono: string
   entidad_id: string

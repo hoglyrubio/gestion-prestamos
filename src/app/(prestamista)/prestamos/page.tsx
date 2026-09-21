@@ -21,7 +21,7 @@ export default async function PrestamosPage({
       .select(`
         id, tipo, numero, cliente_id, entidad_id, fecha, fecha_inicio,
         capital, tasa_interes, cuotas, valor_cuota, estado,
-        cliente:clientes(nombres, apellidos),
+        cliente:clientes(nombre),
         entidad:entidades(nombre),
         adjuntos:prestamo_adjuntos(id, url, nombre)
       `, { count: "exact" })
@@ -29,8 +29,8 @@ export default async function PrestamosPage({
       .range(from, to),
     supabase
       .from("clientes")
-      .select("id, nombres, apellidos, documento")
-      .order("apellidos", { ascending: true }),
+      .select("id, nombre, documento")
+      .order("nombre", { ascending: true }),
     supabase
       .from("entidades")
       .select("id, nombre")

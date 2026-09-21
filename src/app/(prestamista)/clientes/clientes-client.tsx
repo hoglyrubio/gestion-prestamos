@@ -12,7 +12,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 interface Entidad { id: string; nombre: string }
 interface Cliente {
-  id: string; documento: string; nombres: string; apellidos: string
+  id: string; documento: string; nombre: string
   direccion: string; telefono: string; entidad_id: string
   entidad: { nombre: string } | null
 }
@@ -27,9 +27,7 @@ export function ClientesClient({
 
   const filtered = clientes.filter((c) => {
     const q = search.toLowerCase()
-    return c.nombres.toLowerCase().includes(q)
-      || c.apellidos.toLowerCase().includes(q)
-      || c.documento.includes(q)
+    return c.nombre.toLowerCase().includes(q) || c.documento.includes(q)
   })
 
   return (
@@ -63,7 +61,7 @@ export function ClientesClient({
           <TableBody>
             {filtered.map((c) => (
               <TableRow key={c.id} onClick={() => setDetail(c)} className="cursor-pointer">
-                <TableCell className="font-medium text-foreground">{c.nombres} {c.apellidos}</TableCell>
+                <TableCell className="font-medium text-foreground">{c.nombre}</TableCell>
                 <TableCell className="font-mono text-primary">{c.documento}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{c.entidad?.nombre ?? c.entidad_id ?? "—"}</Badge>
@@ -85,7 +83,7 @@ export function ClientesClient({
       </div>
 
       {detail && (
-        <Sheet title={`${detail.nombres} ${detail.apellidos}`} onClose={() => setDetail(null)}>
+        <Sheet title={detail.nombre} onClose={() => setDetail(null)}>
           <Field label="Documento" value={detail.documento} mono />
           <Field label="Teléfono"  value={detail.telefono} />
           <Field label="Dirección" value={detail.direccion} />

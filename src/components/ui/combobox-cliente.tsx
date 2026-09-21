@@ -4,8 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 
 interface Cliente {
   id: string
-  nombres: string
-  apellidos: string
+  nombre: string
   documento: string
 }
 
@@ -27,7 +26,7 @@ export function ClienteCombobox({
     : undefined
 
   const [query, setQuery] = useState(
-    initial ? `${initial.nombres} ${initial.apellidos}` : ""
+    initial ? initial.nombre : ""
   )
   const [selectedId, setSelectedId] = useState(defaultValue ?? "")
   const [open, setOpen] = useState(false)
@@ -40,18 +39,14 @@ export function ClienteCombobox({
   const filtered = query.trim()
     ? clientes.filter((c) => {
         const q = query.toLowerCase()
-        return (
-          c.nombres.toLowerCase().includes(q) ||
-          c.apellidos.toLowerCase().includes(q) ||
-          c.documento.includes(q)
-        )
+        return c.nombre.toLowerCase().includes(q) || c.documento.includes(q)
       })
     : clientes
 
   const select = useCallback(
     (c: Cliente) => {
       setSelectedId(c.id)
-      setQuery(`${c.nombres} ${c.apellidos}`)
+      setQuery(c.nombre)
       setOpen(false)
     },
     []
@@ -168,7 +163,7 @@ export function ClienteCombobox({
                   selectedId === c.id ? "font-medium text-blue-700" : "text-slate-900",
                 ].join(" ")}
               >
-                <span className="font-medium">{c.nombres} {c.apellidos}</span>
+                <span className="font-medium">{c.nombre}</span>
                 <span className="ml-2 text-xs text-slate-400 font-mono">{c.documento}</span>
               </li>
             ))

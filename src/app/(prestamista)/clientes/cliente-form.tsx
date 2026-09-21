@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 
 interface Entidad { id: string; nombre: string }
 interface Cliente {
-  id: string; documento: string; nombres: string; apellidos: string
+  id: string; documento: string; nombre: string
   direccion: string; telefono: string; entidad_id: string
 }
 
@@ -37,14 +37,9 @@ export function ClienteForm({
           {isEdit && <p className="text-xs text-muted-foreground">El documento no se puede modificar</p>}
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Nombres <span className="text-destructive">*</span></Label>
-          <Input name="nombres" defaultValue={cliente?.nombres} placeholder="Nombres" autoComplete="given-name" />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Apellidos <span className="text-destructive">*</span></Label>
-          <Input name="apellidos" defaultValue={cliente?.apellidos} placeholder="Apellidos" autoComplete="family-name" />
+        <div className="sm:col-span-2 space-y-1.5">
+          <Label>Nombre completo <span className="text-destructive">*</span></Label>
+          <Input name="nombre" defaultValue={cliente?.nombre} placeholder="Nombre y apellidos" autoComplete="name" />
         </div>
 
         <div className="sm:col-span-2 space-y-1.5">

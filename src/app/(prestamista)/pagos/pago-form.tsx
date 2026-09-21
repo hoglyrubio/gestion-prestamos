@@ -13,7 +13,7 @@ interface Prestamo {
   cuotas_pagadas: number
   valor_cuota: number
   fecha_inicio: string
-  cliente: { nombres: string; apellidos: string } | null
+  cliente: { nombre: string } | null
 }
 
 const COP = (n: number) =>
@@ -37,8 +37,7 @@ export function PagoForm({ prestamo, onClose }: { prestamo: Prestamo; onClose: (
       <div className="bg-muted/50 border border-border rounded-lg px-4 py-3 text-sm space-y-1.5">
         {[
           ["Préstamo",       prestamo.numero],
-          ["Cliente",        prestamo.cliente
-            ? `${prestamo.cliente.nombres} ${prestamo.cliente.apellidos}` : "—"],
+          ["Cliente",        prestamo.cliente?.nombre ?? "—"],
           ["Cuota",          `#${numeroCuota} de ${prestamo.cuotas}`],
           ["Fecha esperada", fechaEsperada],
           ["Valor esperado", COP(prestamo.valor_cuota)],

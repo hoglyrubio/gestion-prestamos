@@ -11,14 +11,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-interface Cliente { id: string; nombres: string; apellidos: string; documento: string }
+interface Cliente { id: string; nombre: string; documento: string }
 interface Entidad { id: string; nombre: string }
 interface Adjunto { id: string; url: string; nombre: string }
 interface Prestamo {
   id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
   cuotas: number; valor_cuota: number; estado: string
-  cliente: { nombres: string; apellidos: string } | null
+  cliente: { nombre: string } | null
   entidad: { nombre: string } | null
   adjuntos: Adjunto[]
 }
@@ -92,7 +92,7 @@ export function PrestamosClient({
     const q = search.toLowerCase()
     return matchFiltro && (
       p.numero.toLowerCase().includes(q) ||
-      (p.cliente?.nombres + " " + p.cliente?.apellidos).toLowerCase().includes(q)
+      (p.cliente?.nombre ?? "").toLowerCase().includes(q)
     )
   })
 
@@ -147,7 +147,7 @@ export function PrestamosClient({
               <TableRow key={p.id} onClick={() => setDetail(p)} className="cursor-pointer">
                 <TableCell className="font-mono font-semibold text-primary">{p.numero}</TableCell>
                 <TableCell className="text-foreground">
-                  {p.cliente ? `${p.cliente.nombres} ${p.cliente.apellidos}` : "—"}
+                  {p.cliente?.nombre ?? "—"}
                 </TableCell>
                 <TableCell className="text-foreground">{COP(p.capital)}</TableCell>
                 <TableCell>
@@ -175,7 +175,7 @@ export function PrestamosClient({
         const estadoCls = ESTADO_CLS[detail.estado] ?? "bg-secondary text-secondary-foreground"
         return (
           <Sheet title={detail.numero} onClose={() => setDetail(null)}>
-            <Field label="Cliente"     value={detail.cliente ? `${detail.cliente.nombres} ${detail.cliente.apellidos}` : "—"} />
+            <Field label="Cliente"     value={detail.cliente?.nombre ?? "—"} />
             <Field label="Tipo"        value={detail.tipo} badge badgeCls={TIPO_CLS[detail.tipo]} />
             {detail.entidad && <Field label="Entidad" value={detail.entidad.nombre} />}
             <Field label="Estado"      value={detail.estado} badge badgeCls={estadoCls} />

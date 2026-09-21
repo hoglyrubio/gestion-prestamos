@@ -16,12 +16,12 @@ interface PrestamoActivo {
   id: string; numero: string; tipo: string
   cuotas: number; cuotas_pagadas: number
   valor_cuota: number; fecha_inicio: string; estado: string
-  cliente: { nombres: string; apellidos: string } | null
+  cliente: { nombre: string } | null
 }
 interface PagoHistorial {
   id: string; numero_cuota: number; fecha_pago: string | null
   valor_pagado: number | null; notas: string | null; prestamo_id: string
-  prestamo: { numero: string; cliente: { nombres: string; apellidos: string } | null } | null
+  prestamo: { numero: string; cliente: { nombre: string } | null } | null
 }
 interface StatActivo { cuotas: number; cuotas_pagadas: number; fecha_inicio: string }
 
@@ -82,14 +82,13 @@ export function PagosClient({
 
   const filteredPrestamos = prestamos.filter((p) => {
     const q = search.toLowerCase()
-    const cliente = p.cliente ? `${p.cliente.nombres} ${p.cliente.apellidos}`.toLowerCase() : ""
+    const cliente = p.cliente?.nombre.toLowerCase() ?? ""
     return p.numero.toLowerCase().includes(q) || cliente.includes(q)
   })
 
   const filteredHistorial = historial.filter((p) => {
     const q = search.toLowerCase()
-    const cliente = p.prestamo?.cliente
-      ? `${p.prestamo.cliente.nombres} ${p.prestamo.cliente.apellidos}`.toLowerCase() : ""
+    const cliente = p.prestamo?.cliente?.nombre.toLowerCase() ?? ""
     return (p.prestamo?.numero ?? "").toLowerCase().includes(q) || cliente.includes(q)
   })
 
@@ -162,7 +161,7 @@ export function PagosClient({
                     <TableCell>
                       <p className="font-mono font-semibold text-primary text-sm">{p.numero}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {p.cliente ? `${p.cliente.nombres} ${p.cliente.apellidos}` : "—"}
+                        {p.cliente?.nombre ?? "—"}
                       </p>
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
@@ -208,8 +207,7 @@ export function PagosClient({
                   <TableCell>
                     <p className="font-mono font-semibold text-primary text-sm">{p.prestamo?.numero ?? "—"}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.prestamo?.cliente
-                        ? `${p.prestamo.cliente.nombres} ${p.prestamo.cliente.apellidos}` : "—"}
+                      {p.prestamo?.cliente?.nombre ?? "—"}
                     </p>
                   </TableCell>
                   <TableCell className="font-mono text-foreground text-center">#{p.numero_cuota}</TableCell>
@@ -237,8 +235,7 @@ export function PagosClient({
           title={`${detail.numero} — cuota ${detail.cuotas_pagadas + 1}/${detail.cuotas}`}
           onClose={() => setDetail(null)}
         >
-          <Field label="Cliente" value={detail.cliente
-            ? `${detail.cliente.nombres} ${detail.cliente.apellidos}` : "—"} />
+          <Field label="Cliente" value={detail.cliente?.nombre ?? "—"} />
           <Field label="Tipo"    value={detail.tipo} />
           <Field label="Progreso" value={`${detail.cuotas_pagadas} de ${detail.cuotas} cuotas`} />
           <Field label="Valor cuota" value={COP(detail.valor_cuota)} />
@@ -257,8 +254,7 @@ export function PagosClient({
           title={`Pago cuota #${histDetail.numero_cuota} — ${histDetail.prestamo?.numero ?? ""}`}
           onClose={() => setHistDetail(null)}
         >
-          <Field label="Cliente" value={histDetail.prestamo?.cliente
-            ? `${histDetail.prestamo.cliente.nombres} ${histDetail.prestamo.cliente.apellidos}` : "—"} />
+          <Field label="Cliente" value={histDetail.prestamo?.cliente?.nombre ?? "—"} />
           <Field label="Cuota"       value={`#${histDetail.numero_cuota}`} />
           <Field label="Fecha pago"  value={histDetail.fecha_pago} />
           <Field label="Valor pagado" value={histDetail.valor_pagado != null ? COP(histDetail.valor_pagado) : "—"} />

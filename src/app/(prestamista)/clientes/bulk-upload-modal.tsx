@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 
 interface FilaPreview {
-  documento: string; nombres: string; apellidos: string
+  documento: string; nombre: string
   direccion: string; telefono: string; entidad_id: string
 }
 
@@ -24,7 +24,7 @@ function parsearCSVCliente(text: string): ParseResult {
   if (lineas.length < 2)   return { rows: [], clientErrors: ["El archivo sólo tiene encabezado, sin datos"], rawCsv: text }
 
   const encabezados = lineas[0].toLowerCase().split(",").map((h) => h.trim().replace(/^"|"$/g, ""))
-  const esperados = ["documento", "nombres", "apellidos", "direccion", "telefono", "entidad_id"]
+  const esperados = ["documento", "nombre", "direccion", "telefono", "entidad_id"]
   const faltantes = esperados.filter((e) => !encabezados.includes(e))
   if (faltantes.length > 0) {
     clientErrors.push(`Columnas faltantes: ${faltantes.join(", ")}`)
@@ -39,8 +39,7 @@ function parsearCSVCliente(text: string): ParseResult {
     const get = (c: string) => cols[idx[c]] ?? ""
     rows.push({
       documento:  get("documento"),
-      nombres:    get("nombres"),
-      apellidos:  get("apellidos"),
+      nombre:    get("nombre"),
       direccion:  get("direccion"),
       telefono:   get("telefono"),
       entidad_id: get("entidad_id"),
@@ -50,7 +49,7 @@ function parsearCSVCliente(text: string): ParseResult {
   return { rows, clientErrors, rawCsv: text }
 }
 
-const PLANTILLA_CSV = "documento,nombres,apellidos,direccion,telefono,entidad_id\n12345678,Juan,Pérez,Cra 1 # 2-3,3001234567,ENTIDAD_ID_AQUI\n"
+const PLANTILLA_CSV = "documento,nombre,direccion,telefono,entidad_id\n12345678,Juan Pérez,Cra 1 # 2-3,3001234567,ENTIDAD_ID_AQUI\n"
 
 function descargarPlantilla() {
   const blob = new Blob([PLANTILLA_CSV], { type: "text/csv;charset=utf-8;" })
@@ -91,7 +90,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
           <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 space-y-1.5">
             <p className="text-sm font-medium text-foreground">Formato esperado del CSV</p>
             <p className="text-xs text-muted-foreground font-mono break-all">
-              documento, nombres, apellidos, direccion, telefono, entidad_id
+              documento, nombre, direccion, telefono, entidad_id
             </p>
             <p className="text-xs text-muted-foreground">
               El campo <span className="font-mono">entidad_id</span> debe coincidir exactamente con el identificador de la entidad.
@@ -194,7 +193,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
                   <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr className="bg-muted/50 text-left text-muted-foreground">
-                        {["Documento", "Nombres", "Apellidos", "Dirección", "Teléfono", "Entidad ID"].map((h) => (
+                        {["Documento", "Nombre", "Dirección", "Teléfono", "Entidad ID"].map((h) => (
                           <th key={h} className="px-2 py-1.5 font-medium whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -203,8 +202,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
                       {parseResult.rows.slice(0, 5).map((r, i) => (
                         <tr key={i} className="border-t border-border/50">
                           <td className="px-2 py-1 font-mono">{r.documento}</td>
-                          <td className="px-2 py-1">{r.nombres}</td>
-                          <td className="px-2 py-1">{r.apellidos}</td>
+                          <td className="px-2 py-1">{r.nombre}</td>
                           <td className="px-2 py-1 max-w-32 truncate">{r.direccion}</td>
                           <td className="px-2 py-1 font-mono">{r.telefono}</td>
                           <td className="px-2 py-1 font-mono text-muted-foreground">{r.entidad_id}</td>

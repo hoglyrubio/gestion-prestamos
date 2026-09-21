@@ -19,10 +19,10 @@ export default async function ClientesPage({
     supabase
       .from("clientes")
       .select(
-        "id, documento, nombres, apellidos, direccion, telefono, entidad_id, entidad:entidades(nombre)",
+        "id, documento, nombre, direccion, telefono, entidad_id, entidad:entidades(nombre)",
         { count: "exact" }
       )
-      .order("apellidos", { ascending: true })
+      .order("nombre", { ascending: true })
       .range(from, to),
     supabase
       .from("entidades")
