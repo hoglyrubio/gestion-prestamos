@@ -174,7 +174,7 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
               {adjuntos.map((a, i) => (
                 <div key={i} className="flex items-center gap-2.5 px-3 py-2 border border-border bg-muted/50 rounded-lg">
                   <span className="text-base flex-shrink-0">
-                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(a.url) ? "🖼️" : "📄"}
+                    {(() => { try { return /\.(jpg|jpeg|png|gif|webp)$/i.test(new URL(a.url).pathname) } catch { return false } })() ? "🖼️" : "📄"}
                   </span>
                   <span className="text-sm text-foreground flex-1 truncate">{a.nombre}</span>
                   <button type="button" onClick={() => setAdjuntos((prev) => prev.filter((_, j) => j !== i))}

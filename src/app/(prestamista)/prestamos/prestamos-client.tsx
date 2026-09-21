@@ -23,7 +23,10 @@ interface Prestamo {
   adjuntos: Adjunto[]
 }
 
-function isImage(url: string) { return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) }
+function isImage(url: string) {
+  try { return /\.(jpg|jpeg|png|gif|webp)$/i.test(new URL(url).pathname) }
+  catch { return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) }
+}
 
 function AdjuntoPreview({ adjunto, onClose }: { adjunto: Adjunto; onClose: () => void }) {
   return (

@@ -42,11 +42,13 @@ export async function registrarPago(
 
     const { data: prestamo } = await supabase
       .from("prestamos")
-      .select("id, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio")
+      .select("id, estado, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio")
       .eq("id", prestamo_id)
       .single()
 
     if (!prestamo) return { error: "Préstamo no encontrado" }
+    if (prestamo.estado !== "ACTIVA")
+      return { error: `No se pueden registrar pagos en un préstamo con estado ${prestamo.estado}` }
     if (prestamo.cuotas_pagadas >= prestamo.cuotas)
       return { error: "Este préstamo ya tiene todas las cuotas pagadas" }
 
@@ -65,7 +67,13 @@ export async function registrarPago(
       notas,
       estado: "PAGADO",
     })
-    if (insertError) return { error: insertError.message }
+
+    if (insertError) {
+      // Unique constraint: otro proceso ya registró esta cuota (doble envío)
+      if (insertError.code === "23505")
+        return { error: "Esta cuota ya fue registrada. Recarga la página e intenta de nuevo." }
+      return { error: insertError.message }
+    }
 
     const nuevas_pagadas = prestamo.cuotas_pagadas + 1
     const nuevoEstado = nuevas_pagadas >= prestamo.cuotas ? "PAGADA" : "ACTIVA"
@@ -117,7 +125,14 @@ export async function anularPago(
       .eq("id", pago.prestamo_id)
       .single()
 
-    await supabase.from("pagos").delete().eq("id", id)
+    const { error: deleteError, count: deleteCount } = await supabase
+      .from("pagos")
+      .delete({ count: "exact" })
+      .eq("id", id)
+
+    if (deleteError) return { error: deleteError.message }
+    if (!deleteCount || deleteCount === 0)
+      return { error: "No se pudo eliminar el pago. Verifica tus permisos." }
 
     await supabase.from("prestamos")
       .update({

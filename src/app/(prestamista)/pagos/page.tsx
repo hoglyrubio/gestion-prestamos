@@ -44,11 +44,16 @@ export default async function PagosPage({
       .select("cuotas, cuotas_pagadas, fecha_inicio")
       .eq("estado", "ACTIVA"),
 
-    // Stats: recaudo del mes actual
+    // Stats: recaudo del mes actual (bounds estrictos para no incluir meses futuros)
     supabase
       .from("pagos")
       .select("valor_pagado")
-      .gte("fecha_pago", mes + "-01"),
+      .gte("fecha_pago", mes + "-01")
+      .lt("fecha_pago", (() => {
+        const [y, m] = mes.split("-").map(Number)
+        const next = new Date(y, m, 1) // mes es 1-based; Date(y, m) = primer día del mes siguiente
+        return next.toISOString().split("T")[0]
+      })()),
   ])
 
   const totalPages = Math.ceil(((prestamosRes.count ?? 0) / PAGE_SIZE))

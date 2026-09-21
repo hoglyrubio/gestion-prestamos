@@ -135,7 +135,6 @@ export async function actualizarPrestamo(
     const fecha_inicio = formData.get("fecha_inicio") as string
     const estado = formData.get("estado") as string
     const entidad_id = (formData.get("entidad_id") as string) || null
-    const foto_url = (formData.get("foto_url") as string) || null
 
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
     if (isNaN(tasa_interes) || tasa_interes <= 0) return { error: "La tasa debe ser mayor a 0" }
@@ -156,9 +155,10 @@ export async function actualizarPrestamo(
     // Reemplazar adjuntos: borrar los anteriores e insertar los nuevos
     await supabase.from("prestamo_adjuntos").delete().eq("prestamo_id", id)
     if (adjuntos.length > 0) {
-      await supabase.from("prestamo_adjuntos").insert(
+      const { error: adjErr } = await supabase.from("prestamo_adjuntos").insert(
         adjuntos.map((a) => ({ prestamo_id: id, url: a.url, nombre: a.nombre }))
       )
+      if (adjErr) return { error: `Préstamo actualizado pero falló la actualización de adjuntos: ${adjErr.message}` }
     }
 
     revalidatePath("/prestamos")
