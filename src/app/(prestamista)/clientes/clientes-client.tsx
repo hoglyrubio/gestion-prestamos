@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ClienteForm } from "./cliente-form"
+import { BulkUploadModal } from "./bulk-upload-modal"
 import { Pagination } from "@/components/ui/pagination"
 import { Sheet, Modal, Field } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -19,9 +20,10 @@ interface Cliente {
 export function ClientesClient({
   clientes, entidades, page, totalPages,
 }: { clientes: Cliente[]; entidades: Entidad[]; page: number; totalPages: number }) {
-  const [detail, setDetail]    = useState<Cliente | null>(null)
-  const [formCliente, setForm] = useState<Cliente | null | "new">(null)
-  const [search, setSearch]    = useState("")
+  const [detail, setDetail]      = useState<Cliente | null>(null)
+  const [formCliente, setForm]   = useState<Cliente | null | "new">(null)
+  const [showBulk, setShowBulk]  = useState(false)
+  const [search, setSearch]      = useState("")
 
   const filtered = clientes.filter((c) => {
     const q = search.toLowerCase()
@@ -37,7 +39,10 @@ export function ClientesClient({
           <h2 className="text-xl font-bold text-foreground">Clientes</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Personas con préstamos activos o historial</p>
         </div>
-        <Button onClick={() => setForm("new")}>+ Nuevo cliente</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowBulk(true)}>↑ Carga masiva</Button>
+          <Button onClick={() => setForm("new")}>+ Nuevo cliente</Button>
+        </div>
       </div>
 
       <div className="mb-4 relative">
@@ -100,6 +105,8 @@ export function ClientesClient({
           />
         </Modal>
       )}
+
+      {showBulk && <BulkUploadModal onClose={() => setShowBulk(false)} />}
     </>
   )
 }
