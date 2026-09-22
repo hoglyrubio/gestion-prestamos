@@ -10,7 +10,7 @@ async function getAuthorizedClient() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, status")
+    .select("role, status, full_name")
     .eq("id", user.id)
     .single()
 
@@ -19,7 +19,11 @@ async function getAuthorizedClient() {
     (profile?.role === "PRESTAMISTA" || profile?.role === "ADMIN")
 
   if (!allowed) throw new Error("Sin permisos")
-  return { supabase, userId: user.id }
+  return {
+    supabase,
+    userId: user.id,
+    ingresadoNombre: profile?.full_name ?? user.email ?? "Sistema",
+  }
 }
 
 export type PagoFormState = { error?: string; success?: boolean }
@@ -30,7 +34,7 @@ export async function registrarPago(
   formData: FormData
 ): Promise<PagoFormState> {
   try {
-    const { supabase } = await getAuthorizedClient()
+    const { supabase, ingresadoNombre } = await getAuthorizedClient()
 
     const prestamo_id  = formData.get("prestamo_id") as string
     const fecha_pago   = formData.get("fecha_pago") as string
@@ -42,7 +46,7 @@ export async function registrarPago(
 
     const { data: prestamo } = await supabase
       .from("prestamos")
-      .select("id, estado, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio")
+      .select("id, estado, cuotas, cuotas_pagadas, valor_cuota, fecha_inicio, total_pagado")
       .eq("id", prestamo_id)
       .single()
 
@@ -66,6 +70,7 @@ export async function registrarPago(
       valor_pagado,
       notas,
       estado: "PAGADO",
+      ingresado_nombre: ingresadoNombre,
     })
 
     if (insertError) {
@@ -78,10 +83,15 @@ export async function registrarPago(
     const nuevas_pagadas = prestamo.cuotas_pagadas + 1
     const nuevoEstado = nuevas_pagadas >= prestamo.cuotas ? "PAGADA" : "ACTIVA"
     await supabase.from("prestamos")
-      .update({ cuotas_pagadas: nuevas_pagadas, estado: nuevoEstado })
+      .update({
+        cuotas_pagadas: nuevas_pagadas,
+        estado: nuevoEstado,
+        total_pagado: (prestamo.total_pagado ?? 0) + valor_pagado,
+      })
       .eq("id", prestamo_id)
 
     revalidatePath("/pagos")
+    revalidatePath("/pagos/prestamo")
     revalidatePath("/prestamos")
     return { success: true }
   } catch (e) {
@@ -101,7 +111,7 @@ export async function anularPago(
 
     const { data: pago } = await supabase
       .from("pagos")
-      .select("prestamo_id, numero_cuota")
+      .select("prestamo_id, numero_cuota, valor_pagado")
       .eq("id", id)
       .single()
 
@@ -121,7 +131,7 @@ export async function anularPago(
 
     const { data: prestamo } = await supabase
       .from("prestamos")
-      .select("cuotas_pagadas")
+      .select("cuotas_pagadas, total_pagado")
       .eq("id", pago.prestamo_id)
       .single()
 
@@ -138,10 +148,12 @@ export async function anularPago(
       .update({
         cuotas_pagadas: Math.max(0, (prestamo?.cuotas_pagadas ?? 1) - 1),
         estado: "ACTIVA",
+        total_pagado: Math.max(0, (prestamo?.total_pagado ?? 0) - (pago.valor_pagado ?? 0)),
       })
       .eq("id", pago.prestamo_id)
 
     revalidatePath("/pagos")
+    revalidatePath("/pagos/prestamo")
     revalidatePath("/prestamos")
     return { success: true }
   } catch (e) {

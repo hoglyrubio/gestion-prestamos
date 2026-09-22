@@ -21,6 +21,8 @@ const prestamisteNav = [
   { href: "/clientes", icon: "👤", label: "Clientes" },
   { href: "/prestamos", icon: "📋", label: "Préstamos" },
   { href: "/pagos", icon: "💳", label: "Pagos" },
+  { href: "/pagos/prestamo", icon: "💰", label: "Pago a Préstamo" },
+  { href: "/pagos/bulk", icon: "📦", label: "Pagos en lote" },
 ]
 
 const comingSoon = [
