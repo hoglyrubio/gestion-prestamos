@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { cache } from "react"
 
 // TODO: reemplazar con `createServerClient<Database>` una vez ejecutado `supabase gen types`
-export async function createClient() {
+// cache(): layout y page de un mismo request comparten el cliente
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -23,4 +25,4 @@ export async function createClient() {
       },
     }
   )
-}
+})

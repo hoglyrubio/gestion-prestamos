@@ -78,7 +78,7 @@ export function PrestamosClient({
   prestamos, clientes, entidades, stats, page, totalPages,
 }: {
   prestamos: Prestamo[]; clientes: Cliente[]; entidades: Entidad[]
-  stats: Pick<Prestamo, "estado" | "capital" | "valor_cuota">[]
+  stats: { total: number; activos: number; capital_colocado: number; por_cobrar: number }
   page: number; totalPages: number
 }) {
   const [detail, setDetail]       = useState<Prestamo | null>(null)
@@ -96,9 +96,8 @@ export function PrestamosClient({
     )
   })
 
-  const activos = stats.filter((p) => p.estado === "ACTIVA")
-  const capitalColocado = activos.reduce((s, p) => s + p.capital, 0)
-  const porCobrar = activos.reduce((s, p) => s + p.valor_cuota, 0)
+  const capitalColocado = Number(stats.capital_colocado)
+  const porCobrar = Number(stats.por_cobrar)
 
   return (
     <>
@@ -112,9 +111,9 @@ export function PrestamosClient({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="Capital colocado" value={COP(capitalColocado)} sub="Activos"        color="primary" />
-        <StatCard label="Activos"          value={String(activos.length)} sub="En curso"     color="green" />
+        <StatCard label="Activos"          value={String(stats.activos)} sub="En curso"     color="green" />
         <StatCard label="Por cobrar / mes" value={COP(porCobrar)}        sub="Cuotas activas" color="amber" />
-        <StatCard label="Total"            value={String(stats.length)}   sub="Todos los estados" />
+        <StatCard label="Total"            value={String(stats.total)}   sub="Todos los estados" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">

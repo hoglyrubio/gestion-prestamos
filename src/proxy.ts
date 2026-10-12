@@ -23,7 +23,10 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getClaims verifica el JWT localmente (claves asimétricas) y solo refresca
+  // la sesión cuando expira; evita un viaje a Supabase Auth por request.
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims ?? null
   const { pathname } = request.nextUrl
 
   // Rutas públicas: no requieren sesión
@@ -34,44 +37,11 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Sin sesión → login
+  // Sin sesión → login. Estado y rol del perfil se validan en los layouts
+  // (con una sola consulta compartida vía React cache) para no pagar otra
+  // ida y vuelta a la base de datos en el proxy.
   if (!user) {
     return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // Verificar estado y rol del perfil
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single()
-
-  // Sin perfil o pendiente → página de espera
-  if (!profile || profile.status === "PENDING") {
-    if (!pathname.startsWith("/pending")) {
-      return NextResponse.redirect(new URL("/pending", request.url))
-    }
-    return supabaseResponse
-  }
-
-  // Rechazado → login
-  if (profile.status === "REJECTED") {
-    await supabase.auth.signOut()
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // Rutas de admin solo para ADMIN
-  if (pathname.startsWith("/usuarios") || pathname.startsWith("/entidades")) {
-    if (profile.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-  }
-
-  // Clientes y préstamos: PRESTAMISTA y ADMIN
-  if (pathname.startsWith("/clientes") || pathname.startsWith("/prestamos")) {
-    if (profile.role !== "PRESTAMISTA" && profile.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
   }
 
   return supabaseResponse

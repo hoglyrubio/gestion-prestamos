@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { getSession } from "@/lib/auth"
 import { AdminShell } from "@/components/layout/admin-shell"
 
 export default async function AdminLayout({
@@ -7,20 +7,12 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { userId, profile } = await getSession()
 
-  if (!user) redirect("/login")
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status, full_name, email")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.status !== "ACTIVE" || profile.role !== "ADMIN") {
-    redirect("/")
-  }
+  if (!userId) redirect("/login")
+  if (profile?.status === "REJECTED") redirect("/auth/rejected")
+  if (!profile || profile.status === "PENDING") redirect("/pending")
+  if (profile.status !== "ACTIVE" || profile.role !== "ADMIN") redirect("/")
 
   return (
     <AdminShell

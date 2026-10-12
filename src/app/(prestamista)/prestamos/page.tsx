@@ -15,7 +15,7 @@ export default async function PrestamosPage({
 
   const supabase = await createClient()
 
-  const [{ data: prestamos, count }, { data: clientes }, { data: entidades }] = await Promise.all([
+  const [{ data: prestamos, count }, { data: clientes }, { data: entidades }, { data: statsRows }] = await Promise.all([
     supabase
       .from("prestamos")
       .select(`
@@ -35,12 +35,9 @@ export default async function PrestamosPage({
       .from("entidades")
       .select("id, nombre")
       .order("nombre", { ascending: true }),
+    // Stats globales agregadas en Postgres (migración 20261012000000)
+    supabase.rpc("prestamos_stats"),
   ])
-
-  // Stats globales sin paginar
-  const { data: statsData } = await supabase
-    .from("prestamos")
-    .select("estado, capital, valor_cuota")
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
@@ -49,7 +46,7 @@ export default async function PrestamosPage({
       prestamos={(prestamos ?? []) as any}
       clientes={clientes ?? []}
       entidades={entidades ?? []}
-      stats={(statsData ?? []) as any}
+      stats={statsRows?.[0] ?? { total: 0, activos: 0, capital_colocado: 0, por_cobrar: 0 }}
       page={page}
       totalPages={totalPages}
     />

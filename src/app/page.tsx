@@ -1,20 +1,12 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { getSession } from "@/lib/auth"
 
 export default async function RootPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { userId, profile } = await getSession()
 
-  if (!user) redirect("/login")
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single()
-
+  if (!userId) redirect("/login")
   if (!profile || profile.status === "PENDING") redirect("/pending")
-  if (profile.status === "REJECTED") redirect("/login")
+  if (profile.status === "REJECTED") redirect("/auth/rejected")
 
   if (profile.role === "ADMIN") redirect("/usuarios")
   if (profile.role === "PRESTAMISTA") redirect("/clientes")

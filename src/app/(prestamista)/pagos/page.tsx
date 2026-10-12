@@ -14,9 +14,8 @@ export default async function PagosPage({
   const to = from + PAGE_SIZE - 1
 
   const supabase = await createClient()
-  const mes = new Date().toISOString().slice(0, 7)
 
-  const [prestamosRes, historialRes, statsActivosRes, recaudoRes] = await Promise.all([
+  const [prestamosRes, historialRes, statsRes] = await Promise.all([
     // Tab "Por cobrar": préstamos activos con cuotas pendientes (paginados)
     supabase
       .from("prestamos")
@@ -38,33 +37,20 @@ export default async function PagosPage({
       .order("fecha_pago", { ascending: false })
       .limit(50),
 
-    // Stats: todos los préstamos activos (para calcular vencidas en cliente)
-    supabase
-      .from("prestamos")
-      .select("cuotas, cuotas_pagadas, fecha_inicio")
-      .eq("estado", "ACTIVA"),
-
-    // Stats: recaudo del mes actual (bounds estrictos para no incluir meses futuros)
-    supabase
-      .from("pagos")
-      .select("valor_pagado")
-      .gte("fecha_pago", mes + "-01")
-      .lt("fecha_pago", (() => {
-        const [y, m] = mes.split("-").map(Number)
-        const next = new Date(y, m, 1) // mes es 1-based; Date(y, m) = primer día del mes siguiente
-        return next.toISOString().split("T")[0]
-      })()),
+    // Stats agregadas en Postgres (migración 20261012000000)
+    supabase.rpc("pagos_stats"),
   ])
 
   const totalPages = Math.ceil(((prestamosRes.count ?? 0) / PAGE_SIZE))
-  const recaudoMes = (recaudoRes.data ?? []).reduce((s, p) => s + (p.valor_pagado ?? 0), 0)
+  const stats = statsRes.data?.[0] ?? { activos: 0, vencidas: 0, recaudo_mes: 0 }
 
   return (
     <PagosClient
       prestamos={(prestamosRes.data ?? []) as any}
       historial={(historialRes.data ?? []) as any}
-      statsActivos={(statsActivosRes.data ?? []) as any}
-      recaudoMes={recaudoMes}
+      activos={Number(stats.activos)}
+      vencidas={Number(stats.vencidas)}
+      recaudoMes={Number(stats.recaudo_mes)}
       page={page}
       totalPages={totalPages}
     />

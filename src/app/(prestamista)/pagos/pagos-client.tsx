@@ -58,11 +58,12 @@ function diasLabel(p: PrestamoActivo): { text: string; cls: string } {
 type Tab = "cobrar" | "historial"
 
 export function PagosClient({
-  prestamos, historial, statsActivos, recaudoMes, page, totalPages,
+  prestamos, historial, activos, vencidas, recaudoMes, page, totalPages,
 }: {
   prestamos: PrestamoActivo[]
   historial: PagoHistorial[]
-  statsActivos: StatActivo[]
+  activos: number
+  vencidas: number
   recaudoMes: number
   page: number
   totalPages: number
@@ -76,9 +77,6 @@ export function PagosClient({
   const [anulError, setAnulError] = useState<string | null>(null)
   const [, startTransition]     = useTransition()
 
-  const hoy = new Date().toISOString().split("T")[0]
-  const activos  = statsActivos.length
-  const vencidas = statsActivos.filter((p) => proximaFecha(p) < hoy).length
 
   const filteredPrestamos = prestamos.filter((p) => {
     const q = search.toLowerCase()
