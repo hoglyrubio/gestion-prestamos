@@ -119,7 +119,6 @@ export async function crearPrestamo(
     }
 
     revalidatePath("/prestamos")
-    revalidatePath("/pagos")
     return { success: true }
   } catch (e) {
     return { error: (e as Error).message }

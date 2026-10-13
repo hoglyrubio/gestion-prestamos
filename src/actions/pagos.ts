@@ -90,7 +90,6 @@ export async function registrarPago(
       })
       .eq("id", prestamo_id)
 
-    revalidatePath("/pagos")
     revalidatePath("/pagos/prestamo")
     revalidatePath("/prestamos")
     return { success: true }
@@ -152,7 +151,6 @@ export async function anularPago(
       })
       .eq("id", pago.prestamo_id)
 
-    revalidatePath("/pagos")
     revalidatePath("/pagos/prestamo")
     revalidatePath("/prestamos")
     return { success: true }
