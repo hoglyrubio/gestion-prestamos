@@ -27,6 +27,7 @@ export default async function PagoPrestamoPage({
             id, numero, tipo, capital, tasa_interes,
             cuotas, cuotas_pagadas, valor_cuota, total_pagado,
             fecha, fecha_inicio,
+            meses_interes, total_deuda, total_intereses, tasa_interes_efectiva,
             cliente:clientes(nombre),
             entidad:entidades(nombre),
             pagos(

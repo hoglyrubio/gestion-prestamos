@@ -37,6 +37,10 @@ interface PagoRow {
 interface PrestamoDetalle extends PrestamoResumen {
   capital: number
   tasa_interes: number
+  meses_interes: number | null
+  total_deuda: number | null
+  total_intereses: number | null
+  tasa_interes_efectiva: number | null
   fecha: string
   entidad: { nombre: string } | null
   pagos: PagoRow[]
@@ -258,6 +262,10 @@ export function PagoPrestamo({
                   ["Tasa de interés", `${selected.tasa_interes}% mensual`],
                   ["Valor cuota", COP(selected.valor_cuota)],
                   ["N.º cuotas", String(selected.cuotas)],
+                  ...(selected.meses_interes != null ? [["Meses de interés", String(selected.meses_interes)]] : []),
+                  ...(selected.total_deuda != null ? [["Total deuda", COP(selected.total_deuda)]] : []),
+                  ...(selected.total_intereses != null ? [["Total intereses", COP(selected.total_intereses)]] : []),
+                  ...(selected.tasa_interes_efectiva != null ? [["Interés real", `${selected.tasa_interes_efectiva.toFixed(4)}% mensual`]] : []),
                   ...(selected.entidad ? [["Entidad", selected.entidad.nombre]] : []),
                 ].map(([k, v]) => (
                   <div key={k}>

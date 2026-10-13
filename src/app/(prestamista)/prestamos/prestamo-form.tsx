@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useCallback } from "react"
 import { crearPrestamo, actualizarPrestamo, type PrestamoFormState } from "@/actions/prestamos"
-import { calcularCuota } from "@/lib/calculos"
+import { calcularPrestamo } from "@/lib/calculos"
 import { createClient } from "@/lib/supabase/client"
 import { ClienteCombobox } from "@/components/ui/combobox-cliente"
 import { EntidadCombobox } from "@/components/ui/combobox-entidad"
@@ -17,6 +17,7 @@ interface Prestamo {
   id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
   cuotas: number; valor_cuota: number; estado: string
+  meses_interes?: number | null
   adjuntos?: Adjunto[]
 }
 
@@ -39,15 +40,21 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
   const [capital, setCapital] = useState(prestamo?.capital?.toString() ?? "")
   const [tasa, setTasa]     = useState(prestamo?.tasa_interes?.toString() ?? "4")
   const [cuotas, setCuotas] = useState(prestamo?.cuotas?.toString() ?? "")
+  // Meses de interés: sigue al número de cuotas hasta que el usuario lo edite
+  const [mesesEdit, setMesesEdit] = useState<string | null>(
+    prestamo?.meses_interes != null ? prestamo.meses_interes.toString() : null
+  )
+  const meses = mesesEdit ?? cuotas
   const [adjuntos, setAdjuntos] = useState<Adjunto[]>(prestamo?.adjuntos ?? [])
   const [uploading, setUploading]   = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => { if (state.success) onClose() }, [state.success, onClose])
 
-  const cuotaPreview = (() => {
-    const c = parseFloat(capital), t = parseFloat(tasa), n = parseInt(cuotas, 10)
-    return c > 0 && t > 0 && n > 0 ? calcularCuota(c, t, n) : null
+  const desglose = (() => {
+    const c = parseFloat(capital), t = parseFloat(tasa)
+    const n = parseInt(cuotas, 10), m = parseFloat(meses)
+    return c > 0 && t > 0 && n > 0 && m > 0 ? calcularPrestamo(c, t, n, m) : null
   })()
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,11 +155,40 @@ export function PrestamoForm({ prestamo, clientes, entidades, onClose }: {
         </div>
 
         <div className="space-y-1.5">
+          <Label>Meses de interés <span className="text-destructive">*</span></Label>
+          <Input type="number" name="meses_interes" value={meses}
+            onChange={(e) => setMesesEdit(e.target.value)}
+            placeholder="2.5" min="0" step="0.01" inputMode="decimal" />
+          <p className="text-[10px] text-muted-foreground">Puede diferir del número de cuotas</p>
+        </div>
+
+        <div className="space-y-1.5">
           <Label>Valor de la cuota</Label>
           <div className="h-8 flex items-center px-2.5 rounded-lg border border-input bg-muted/50 text-sm font-medium text-foreground">
-            {cuotaPreview !== null ? COP(cuotaPreview) : "—"}
+            {desglose ? COP(desglose.valorCuota) : "—"}
           </div>
-          <p className="text-[10px] text-muted-foreground">Capital/n + Capital × tasa</p>
+          <p className="text-[10px] text-muted-foreground">(Capital + Capital × meses × tasa) / cuotas, al millar</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Total deuda</Label>
+          <div className="h-8 flex items-center px-2.5 rounded-lg border border-input bg-muted/50 text-sm font-medium text-foreground">
+            {desglose ? COP(desglose.totalDeuda) : "—"}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Total intereses</Label>
+          <div className="h-8 flex items-center px-2.5 rounded-lg border border-input bg-muted/50 text-sm font-medium text-foreground">
+            {desglose ? COP(desglose.totalIntereses) : "—"}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Interés real (% mensual)</Label>
+          <div className="h-8 flex items-center px-2.5 rounded-lg border border-input bg-muted/50 text-sm font-medium text-foreground">
+            {desglose ? `${desglose.tasaEfectiva.toFixed(4)} %` : "—"}
+          </div>
         </div>
 
         {isEdit && (

@@ -21,6 +21,7 @@ export default async function PrestamosPage({
       .select(`
         id, tipo, numero, cliente_id, entidad_id, fecha, fecha_inicio,
         capital, tasa_interes, cuotas, valor_cuota, estado,
+        meses_interes, total_deuda, total_intereses, tasa_interes_efectiva,
         cliente:clientes(nombre),
         entidad:entidades(nombre),
         adjuntos:prestamo_adjuntos(id, url, nombre)

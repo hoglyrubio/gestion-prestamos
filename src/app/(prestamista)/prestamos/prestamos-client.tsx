@@ -18,6 +18,8 @@ interface Prestamo {
   id: string; tipo: string; numero: string; cliente_id: string; entidad_id: string | null
   fecha: string; fecha_inicio: string; capital: number; tasa_interes: number
   cuotas: number; valor_cuota: number; estado: string
+  meses_interes: number | null; total_deuda: number | null
+  total_intereses: number | null; tasa_interes_efectiva: number | null
   cliente: { nombre: string } | null
   entidad: { nombre: string } | null
   adjuntos: Adjunto[]
@@ -181,7 +183,11 @@ export function PrestamosClient({
             <Field label="Capital"     value={COP(detail.capital)} />
             <Field label="Tasa"        value={`${detail.tasa_interes}% mensual`} />
             <Field label="Cuotas"      value={String(detail.cuotas)} />
+            {detail.meses_interes != null && <Field label="Meses de interés" value={String(detail.meses_interes)} />}
             <Field label="Valor cuota" value={COP(detail.valor_cuota)} />
+            {detail.total_deuda != null && <Field label="Total deuda" value={COP(detail.total_deuda)} />}
+            {detail.total_intereses != null && <Field label="Total intereses" value={COP(detail.total_intereses)} />}
+            {detail.tasa_interes_efectiva != null && <Field label="Interés real" value={`${detail.tasa_interes_efectiva.toFixed(4)}% mensual`} />}
             <Field label="Fecha"       value={detail.fecha} />
             <Field label="Inicio"      value={detail.fecha_inicio} />
             {detail.adjuntos.length > 0 && (

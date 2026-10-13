@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { calcularCuota } from "@/lib/calculos"
+import { calcularPrestamo } from "@/lib/calculos"
 
 async function getAuthorizedClient() {
   const supabase = await createClient()
@@ -60,6 +60,7 @@ export async function crearPrestamo(
     const capital = parseFloat(formData.get("capital") as string)
     const tasa_interes = parseFloat(formData.get("tasa_interes") as string)
     const cuotas = parseInt(formData.get("cuotas") as string, 10)
+    const meses_interes = parseFloat(formData.get("meses_interes") as string)
     const foto_url = (formData.get("foto_url") as string) || null
 
     if (!tipo)         return { error: "Selecciona el tipo de préstamo" }
@@ -70,6 +71,7 @@ export async function crearPrestamo(
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
     if (isNaN(tasa_interes) || tasa_interes <= 0) return { error: "La tasa debe ser mayor a 0" }
     if (isNaN(cuotas) || cuotas <= 0) return { error: "Las cuotas deben ser mayor a 0" }
+    if (isNaN(meses_interes) || meses_interes <= 0) return { error: "Los meses de interés deben ser mayor a 0" }
 
     // Número: generado para PERSONAL, manual para LIBRANZA
     let numero: string
@@ -80,7 +82,8 @@ export async function crearPrestamo(
       if (!numero) return { error: "El número de libranza es obligatorio" }
     }
 
-    const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
+    const { valorCuota: valor_cuota, totalDeuda: total_deuda, totalIntereses: total_intereses, tasaEfectiva: tasa_interes_efectiva } =
+      calcularPrestamo(capital, tasa_interes, cuotas, meses_interes)
 
     const adjuntosJson = (formData.get("adjuntos") as string) || "[]"
     const adjuntos: { url: string; nombre: string }[] = JSON.parse(adjuntosJson)
@@ -95,7 +98,11 @@ export async function crearPrestamo(
       capital,
       tasa_interes,
       cuotas,
+      meses_interes,
       valor_cuota,
+      total_deuda,
+      total_intereses,
+      tasa_interes_efectiva,
       fecha_inicio,
       estado: "ACTIVA",
     }).select("id").single()
@@ -131,6 +138,7 @@ export async function actualizarPrestamo(
     const capital = parseFloat(formData.get("capital") as string)
     const tasa_interes = parseFloat(formData.get("tasa_interes") as string)
     const cuotas = parseInt(formData.get("cuotas") as string, 10)
+    const meses_interes = parseFloat(formData.get("meses_interes") as string)
     const fecha = formData.get("fecha") as string
     const fecha_inicio = formData.get("fecha_inicio") as string
     const estado = formData.get("estado") as string
@@ -139,15 +147,17 @@ export async function actualizarPrestamo(
     if (isNaN(capital) || capital <= 0) return { error: "El capital debe ser mayor a 0" }
     if (isNaN(tasa_interes) || tasa_interes <= 0) return { error: "La tasa debe ser mayor a 0" }
     if (isNaN(cuotas) || cuotas <= 0) return { error: "Las cuotas deben ser mayor a 0" }
+    if (isNaN(meses_interes) || meses_interes <= 0) return { error: "Los meses de interés deben ser mayor a 0" }
 
-    const valor_cuota = calcularCuota(capital, tasa_interes, cuotas)
+    const { valorCuota: valor_cuota, totalDeuda: total_deuda, totalIntereses: total_intereses, tasaEfectiva: tasa_interes_efectiva } =
+      calcularPrestamo(capital, tasa_interes, cuotas, meses_interes)
 
     const adjuntosJson = (formData.get("adjuntos") as string) || "[]"
     const adjuntos: { url: string; nombre: string }[] = JSON.parse(adjuntosJson)
 
     const { error } = await supabase
       .from("prestamos")
-      .update({ capital, tasa_interes, cuotas, valor_cuota, fecha, fecha_inicio, estado, entidad_id })
+      .update({ capital, tasa_interes, cuotas, meses_interes, valor_cuota, total_deuda, total_intereses, tasa_interes_efectiva, fecha, fecha_inicio, estado, entidad_id })
       .eq("id", id)
 
     if (error) return { error: error.message }
